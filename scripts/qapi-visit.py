@@ -184,7 +184,7 @@ void visit_type_%(c_name)s(Visitor *v, const char *name, %(c_name)s **obj, Error
     case %(case)s:
 ''',
                      case=var.type.alternate_qtype())
-        if isinstance(var.type, QAPISchemaObjectType):
+        if isinstance(var.type, QAPISchemaStructType):
             ret += mcgen('''
         visit_start_struct(v, name, NULL, 0, &err);
         if (err) {

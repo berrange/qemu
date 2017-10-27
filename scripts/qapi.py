@@ -1167,7 +1167,7 @@ class QAPISchemaArrayType(QAPISchemaType):
         visitor.visit_array_type(self.name, self.info, self.element_type)
 
 
-class QAPISchemaObjectType(QAPISchemaType):
+class QAPISchemaStructType(QAPISchemaType):
     def __init__(self, name, info, doc, base, local_members, variants):
         # struct has local_members, optional base, and no variants
         # flat union has base, variants, and no local_members
@@ -1175,10 +1175,10 @@ class QAPISchemaObjectType(QAPISchemaType):
         QAPISchemaType.__init__(self, name, info, doc)
         assert base is None or isinstance(base, str)
         for m in local_members:
-            assert isinstance(m, QAPISchemaObjectTypeMember)
+            assert isinstance(m, QAPISchemaStructTypeMember)
             m.set_owner(name)
         if variants is not None:
-            assert isinstance(variants, QAPISchemaObjectTypeVariants)
+            assert isinstance(variants, QAPISchemaStructTypeVariants)
             variants.set_owner(name)
         self._base_name = base
         self.base = None
@@ -1196,7 +1196,7 @@ class QAPISchemaObjectType(QAPISchemaType):
         seen = OrderedDict()
         if self._base_name:
             self.base = schema.lookup_type(self._base_name)
-            assert isinstance(self.base, QAPISchemaObjectType)
+            assert isinstance(self.base, QAPISchemaStructType)
             self.base.check(schema)
             self.base.check_clash(self.info, seen)
         for m in self.local_members:
@@ -1295,7 +1295,7 @@ class QAPISchemaMember(object):
         return "'%s' %s" % (self.name, self._pretty_owner())
 
 
-class QAPISchemaObjectTypeMember(QAPISchemaMember):
+class QAPISchemaStructTypeMember(QAPISchemaMember):
     def __init__(self, name, typ, optional):
         QAPISchemaMember.__init__(self, name)
         assert isinstance(typ, str)
@@ -1310,7 +1310,7 @@ class QAPISchemaObjectTypeMember(QAPISchemaMember):
         assert self.type
 
 
-class QAPISchemaObjectTypeVariants(object):
+class QAPISchemaStructTypeVariants(object):
     def __init__(self, tag_name, tag_member, variants):
         # Flat unions pass tag_name but not tag_member.
         # Simple unions and alternates pass tag_member but not tag_name.
@@ -1318,10 +1318,10 @@ class QAPISchemaObjectTypeVariants(object):
         # a reliable witness of being used by a flat union.
         assert bool(tag_member) != bool(tag_name)
         assert (isinstance(tag_name, str) or
-                isinstance(tag_member, QAPISchemaObjectTypeMember))
+                isinstance(tag_member, QAPISchemaStructTypeMember))
         assert len(variants) > 0
         for v in variants:
-            assert isinstance(v, QAPISchemaObjectTypeVariant)
+            assert isinstance(v, QAPISchemaStructTypeVariant)
         self._tag_name = tag_name
         self.tag_member = tag_member
         self.variants = variants
@@ -1341,28 +1341,28 @@ class QAPISchemaObjectTypeVariants(object):
             # checked separately. Use 'seen' to tell the two apart.
             if seen:
                 assert v.name in self.tag_member.type.member_names()
-                assert isinstance(v.type, QAPISchemaObjectType)
+                assert isinstance(v.type, QAPISchemaStructType)
                 v.type.check(schema)
 
     def check_clash(self, info, seen):
         for v in self.variants:
             # Reset seen map for each variant, since qapi names from one
             # branch do not affect another branch
-            assert isinstance(v.type, QAPISchemaObjectType)
+            assert isinstance(v.type, QAPISchemaStructType)
             v.type.check_clash(info, dict(seen))
 
 
-class QAPISchemaObjectTypeVariant(QAPISchemaObjectTypeMember):
+class QAPISchemaStructTypeVariant(QAPISchemaStructTypeMember):
     role = 'branch'
 
     def __init__(self, name, typ):
-        QAPISchemaObjectTypeMember.__init__(self, name, typ, False)
+        QAPISchemaStructTypeMember.__init__(self, name, typ, False)
 
 
 class QAPISchemaAlternateType(QAPISchemaType):
     def __init__(self, name, info, doc, variants):
         QAPISchemaType.__init__(self, name, info, doc)
-        assert isinstance(variants, QAPISchemaObjectTypeVariants)
+        assert isinstance(variants, QAPISchemaStructTypeVariants)
         assert variants.tag_member
         variants.set_owner(name)
         variants.tag_member.set_owner(self.name)
@@ -1413,7 +1413,7 @@ class QAPISchemaCommand(QAPISchemaEntity):
     def check(self, schema):
         if self._arg_type_name:
             self.arg_type = schema.lookup_type(self._arg_type_name)
-            assert (isinstance(self.arg_type, QAPISchemaObjectType) or
+            assert (isinstance(self.arg_type, QAPISchemaStructType) or
                     isinstance(self.arg_type, QAPISchemaAlternateType))
             self.arg_type.check(schema)
             if self.boxed:
@@ -1446,7 +1446,7 @@ class QAPISchemaEvent(QAPISchemaEntity):
     def check(self, schema):
         if self._arg_type_name:
             self.arg_type = schema.lookup_type(self._arg_type_name)
-            assert (isinstance(self.arg_type, QAPISchemaObjectType) or
+            assert (isinstance(self.arg_type, QAPISchemaStructType) or
                     isinstance(self.arg_type, QAPISchemaAlternateType))
             self.arg_type.check(schema)
             if self.boxed:
@@ -1520,7 +1520,7 @@ class QAPISchema(object):
                   ('any',    'value',   'QObject' + pointer_suffix),
                   ('null',   'null',    'QNull' + pointer_suffix)]:
             self._def_builtin_type(*t)
-        self.the_empty_object_type = QAPISchemaObjectType(
+        self.the_empty_object_type = QAPISchemaStructType(
             'q_empty', None, None, None, [], None)
         self._def_entity(self.the_empty_object_type)
         qtype_values = self._make_enum_members(['none', 'qnull', 'qnum',
@@ -1533,7 +1533,7 @@ class QAPISchema(object):
         return [QAPISchemaMember(v) for v in values]
 
     def _make_implicit_enum_type(self, name, info, values):
-        # See also QAPISchemaObjectTypeMember._pretty_owner()
+        # See also QAPISchemaStructTypeMember._pretty_owner()
         name = name + 'Kind'   # Use namespace reserved by add_name()
         self._def_entity(QAPISchemaEnumType(
             name, info, None, self._make_enum_members(values), None))
@@ -1548,10 +1548,10 @@ class QAPISchema(object):
     def _make_implicit_object_type(self, name, info, doc, role, members):
         if not members:
             return None
-        # See also QAPISchemaObjectTypeMember._pretty_owner()
+        # See also QAPISchemaStructTypeMember._pretty_owner()
         name = 'q_obj_%s-%s' % (name, role)
-        if not self.lookup_entity(name, QAPISchemaObjectType):
-            self._def_entity(QAPISchemaObjectType(name, info, doc, None,
+        if not self.lookup_entity(name, QAPISchemaStructType):
+            self._def_entity(QAPISchemaStructType(name, info, doc, None,
                                                   members, None))
         return name
 
@@ -1570,7 +1570,7 @@ class QAPISchema(object):
         if isinstance(typ, list):
             assert len(typ) == 1
             typ = self._make_array_type(typ[0], info)
-        return QAPISchemaObjectTypeMember(name, typ, optional)
+        return QAPISchemaStructTypeMember(name, typ, optional)
 
     def _make_members(self, data, info):
         return [self._make_member(key, value, info)
@@ -1580,12 +1580,12 @@ class QAPISchema(object):
         name = expr['struct']
         base = expr.get('base')
         data = expr['data']
-        self._def_entity(QAPISchemaObjectType(name, info, doc, base,
+        self._def_entity(QAPISchemaStructType(name, info, doc, base,
                                               self._make_members(data, info),
                                               None))
 
     def _make_variant(self, case, typ):
-        return QAPISchemaObjectTypeVariant(case, typ)
+        return QAPISchemaStructTypeVariant(case, typ)
 
     def _make_simple_variant(self, case, typ, info):
         if isinstance(typ, list):
@@ -1593,7 +1593,7 @@ class QAPISchema(object):
             typ = self._make_array_type(typ[0], info)
         typ = self._make_implicit_object_type(
             typ, info, None, 'wrapper', [self._make_member('data', typ, info)])
-        return QAPISchemaObjectTypeVariant(case, typ)
+        return QAPISchemaStructTypeVariant(case, typ)
 
     def _def_union_type(self, expr, info, doc):
         name = expr['union']
@@ -1613,11 +1613,11 @@ class QAPISchema(object):
                         for (key, value) in data.iteritems()]
             typ = self._make_implicit_enum_type(name, info,
                                                 [v.name for v in variants])
-            tag_member = QAPISchemaObjectTypeMember('type', typ, False)
+            tag_member = QAPISchemaStructTypeMember('type', typ, False)
             members = [tag_member]
         self._def_entity(
-            QAPISchemaObjectType(name, info, doc, base, members,
-                                 QAPISchemaObjectTypeVariants(tag_name,
+            QAPISchemaStructType(name, info, doc, base, members,
+                                 QAPISchemaStructTypeVariants(tag_name,
                                                               tag_member,
                                                               variants)))
 
@@ -1626,10 +1626,10 @@ class QAPISchema(object):
         data = expr['data']
         variants = [self._make_variant(key, value)
                     for (key, value) in data.iteritems()]
-        tag_member = QAPISchemaObjectTypeMember('type', 'QType', False)
+        tag_member = QAPISchemaStructTypeMember('type', 'QType', False)
         self._def_entity(
             QAPISchemaAlternateType(name, info, doc,
-                                    QAPISchemaObjectTypeVariants(None,
+                                    QAPISchemaStructTypeVariants(None,
                                                                  tag_member,
                                                                  variants)))
 

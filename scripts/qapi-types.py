@@ -61,7 +61,7 @@ def gen_object(name, base, members, variants):
     ret = ''
     if variants:
         for v in variants.variants:
-            if isinstance(v.type, QAPISchemaObjectType):
+            if isinstance(v.type, QAPISchemaStructType):
                 ret += gen_object(v.type.name, v.type.base,
                                   v.type.local_members, v.type.variants)
 
