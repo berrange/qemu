@@ -320,3 +320,29 @@
   'discriminator': 'format',
   'data': { 'qcow': 'QCryptoBlockInfoQCow',
             'luks': 'QCryptoBlockInfoLUKS' } }
+
+##
+# @secret:
+#
+# A secret object
+#
+# Since 2.6
+##
+{
+  'object': 'secret',
+  'base': 'object',
+  'source': 'crypto/secret.c',
+  'header': 'include/crypto/secret.c',
+  'interfaces': [
+    'user-creatable'
+  ],
+  'data': {
+    'loaded': 'bool',
+    'format': 'QCryptoSecretFormat',
+    'data': 'str',
+    'file': 'str',
+    'keyid': 'str',
+    'iv': 'str'
+  }
+}
+  

@@ -50,6 +50,7 @@ name_case_whitelist = []
 enum_types = {}
 struct_types = {}
 union_types = {}
+object_types = {}
 all_names = {}
 
 #
@@ -859,6 +860,10 @@ def check_struct(expr, info):
                allow_metas=['struct'])
 
 
+def check_object(expr, info):
+    pass
+
+
 def check_keys(expr_elem, meta, required, optional=[]):
     expr = expr_elem['expr']
     info = expr_elem['info']
@@ -924,6 +929,10 @@ def check_exprs(exprs):
         elif 'event' in expr:
             meta = 'event'
             check_keys(expr_elem, 'event', [], ['data', 'boxed'])
+        elif 'object' in expr:
+            meta = 'object'
+            check_keys(expr_elem, 'object', ['base', 'source', 'header', 'data'],
+                       ['interfaces'])
         else:
             raise QAPISemError(expr_elem['info'],
                                "Expression is missing metatype")
@@ -963,6 +972,8 @@ def check_exprs(exprs):
             check_command(expr, info)
         elif 'event' in expr:
             check_event(expr, info)
+        elif 'object' in expr:
+            check_object(expr, info)
         else:
             assert False, 'unexpected meta type'
 
@@ -1462,6 +1473,8 @@ class QAPISchemaEvent(QAPISchemaEntity):
     def visit(self, visitor):
         visitor.visit_event(self.name, self.info, self.arg_type, self.boxed)
 
+class QAPISchemaObject(QAPISchemaEntity):
+    def __init__(self, 
 
 class QAPISchema(object):
     def __init__(self, fname):
@@ -1675,6 +1688,8 @@ class QAPISchema(object):
                 self._def_command(expr, info, doc)
             elif 'event' in expr:
                 self._def_event(expr, info, doc)
+            elif 'object' in expr:
+                self._def_qom_object_type(expr, info, doc)
             else:
                 assert False
 
