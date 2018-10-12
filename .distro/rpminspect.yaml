@@ -1,0 +1,6 @@
+---
+elf:
+        exclude_path: (.*s390-ccw.img.*)|(.*s390-netboot.img.*)
+inspections:
+        badfuncs: off
+
