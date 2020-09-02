@@ -1043,9 +1043,9 @@ rm -rf %{buildroot}%{qemudocdir}/specs
 %if !%{tools_only}
 
 pushd %{qemu_kvm_build}
-echo "Skipping tests as not fixed yet"
-#echo "Testing %{name}-build"
+echo "Testing %{name}-build"
 #%make_build check
+make V=1 check
 popd
 
 # endif !tools_only
