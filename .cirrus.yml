@@ -8,8 +8,7 @@ freebsd_12_task:
     memory: 8G
   install_script:
     - ASSUME_ALWAYS_YES=yes pkg bootstrap -f ;
-    - pkg install -y bash curl cyrus-sasl git glib gmake gnutls gsed
-          nettle perl5 pixman pkgconf png usbredir ninja
+    - pkg install -y alsa-lib bzip2 ca_root_nss ccache cdrkit-genisoimage curl cyrus-sasl dbus diffutils gcc gettext git glib gmake gnutls gsed gtar gtk3 libepoxy libgcrypt libjpeg-turbo libnfs libspice-server libssh libtasn1 libxml2 linux_libusb lzo2 meson ncurses nettle ninja nmap p5-Test-Harness perl5 pixman pkgconf py37-numpy py37-opencv py37-pillow py37-pip py37-sphinx py37-virtualenv py37-yaml python3 sdl2 snappy spice-protocol tesseract texinfo usbredir vim virglrenderer vte3
   script:
     - mkdir build
     - cd build
@@ -22,7 +21,7 @@ macos_task:
   osx_instance:
     image: catalina-base
   install_script:
-    - brew install pkg-config python gnu-sed glib pixman make sdl2 bash ninja
+    - brew install bc bzip2 ccache cpanminus curl dbus diffutils gettext git glib gnu-sed gnutls gtk+3 jpeg-turbo libepoxy libgcrypt libiscsi libpng libssh libxml2 lzo make meson ncurses nettle ninja nmap perl pixman pkg-config python3 sdl2 snappy sparse spice-protocol tesseract texinfo usbredir vim zlib
   script:
     - mkdir build
     - cd build
