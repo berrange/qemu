@@ -2385,7 +2385,8 @@ static bool check_section_footer(QEMUFile *f, SaveStateEntry *se)
 }
 
 static int
-qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
+qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis,
+                               Error **errp)
 {
     uint32_t instance_id, version_id, section_id;
     SaveStateEntry *se;
@@ -2395,18 +2396,18 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
     /* Read section start */
     section_id = qemu_get_be32(f);
     if (!qemu_get_counted_string(f, idstr)) {
-        error_report("Unable to read ID string for section %u",
-                     section_id);
-        return -EINVAL;
+        error_setg(errp, "Unable to read ID string for section %u",
+                   section_id);
+        return -1;
     }
     instance_id = qemu_get_be32(f);
     version_id = qemu_get_be32(f);
 
     ret = qemu_file_get_error(f);
     if (ret) {
-        error_report("%s: Failed to read instance/version ID: %d",
-                     __func__, ret);
-        return ret;
+        error_setg(errp, "Failed to read instance/version ID: %d",
+                   ret);
+        return -1;
     }
 
     trace_qemu_loadvm_state_section_startfull(section_id, idstr,
@@ -2414,36 +2415,37 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis)
     /* Find savevm section */
     se = find_se(idstr, instance_id);
     if (se == NULL) {
-        error_report("Unknown savevm section or instance '%s' %"PRIu32". "
-                     "Make sure that your current VM setup matches your "
-                     "saved VM setup, including any hotplugged devices",
-                     idstr, instance_id);
-        return -EINVAL;
+        error_setg(errp, "Unknown savevm section or instance '%s' %"PRIu32". "
+                   "Make sure that your current VM setup matches your "
+                   "saved VM setup, including any hotplugged devices",
+                   idstr, instance_id);
+        return -1;
     }
 
     /* Validate version */
     if (version_id > se->version_id) {
-        error_report("savevm: unsupported version %d for '%s' v%d",
-                     version_id, idstr, se->version_id);
-        return -EINVAL;
+        error_setg(errp, "savevm: unsupported version %d for '%s' v%d",
+                   version_id, idstr, se->version_id);
+        return -1;
     }
     se->load_version_id = version_id;
     se->load_section_id = section_id;
 
     /* Validate if it is a device's state */
     if (xen_enabled() && se->is_ram) {
-        error_report("loadvm: %s RAM loading not allowed on Xen", idstr);
-        return -EINVAL;
+        error_setg(errp, "loadvm: %s RAM loading not allowed on Xen", idstr);
+        return -1;
     }
 
     ret = vmstate_load(f, se);
     if (ret < 0) {
-        error_report("error while loading state for instance 0x%"PRIx32" of"
-                     " device '%s'", instance_id, idstr);
-        return ret;
+        error_setg(errp, "error while loading state for instance 0x%"PRIx32" of"
+                   " device '%s'", instance_id, idstr);
+        return -1;
     }
     if (!check_section_footer(f, se)) {
-        return -EINVAL;
+        error_setg(errp, "failed check for device state section footer");
+        return -1;
     }
 
     return 0;
@@ -2636,11 +2638,8 @@ retry:
         switch (section_type) {
         case QEMU_VM_SECTION_START:
         case QEMU_VM_SECTION_FULL:
-            ret = qemu_loadvm_section_start_full(f, mis);
+            ret = qemu_loadvm_section_start_full(f, mis, errp);
             if (ret < 0) {
-                error_setg(errp,
-                           "Failed to load device state section start: %d",
-                           ret);
                 goto out;
             }
             break;
