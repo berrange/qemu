@@ -1404,7 +1404,8 @@ int qemu_savevm_state_complete_precopy_iterable(QEMUFile *f, bool in_postcopy,
 
 int qemu_savevm_state_complete_precopy_non_iterable(QEMUFile *f,
                                                     bool in_postcopy,
-                                                    bool inactivate_disks)
+                                                    bool inactivate_disks,
+                                                    Error **errp)
 {
     g_autoptr(JSONWriter) vmdesc = NULL;
     int vmdesc_len;
@@ -1433,9 +1434,11 @@ int qemu_savevm_state_complete_precopy_non_iterable(QEMUFile *f,
 
         save_section_header(f, se, QEMU_VM_SECTION_FULL);
         ret = vmstate_save(f, se, vmdesc);
-        if (ret) {
+        if (ret < 0) {
+            error_setg_errno(errp, -ret,
+                             "failed to save device state '%s'", se->idstr);
             qemu_file_set_error(f, ret);
-            return ret;
+            return -1;
         }
         trace_savevm_section_end(se->idstr, se->section_id, 0);
         save_section_footer(f, se);
@@ -1448,10 +1451,10 @@ int qemu_savevm_state_complete_precopy_non_iterable(QEMUFile *f,
          * bdrv_invalidate_cache_all() on the other end won't fail. */
         ret = bdrv_inactivate_all();
         if (ret) {
-            error_report("%s: bdrv_inactivate_all() failed (%d)",
-                         __func__, ret);
+            error_setg_errno(errp, -ret,
+                             "failed to deactivate disks when completing precopy save");
             qemu_file_set_error(f, ret);
-            return ret;
+            return -1;
         }
     }
     if (!in_postcopy) {
@@ -1475,7 +1478,6 @@ int qemu_savevm_state_complete_precopy_non_iterable(QEMUFile *f,
 int qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only,
                                        bool inactivate_disks)
 {
-    int ret;
     Error *local_err = NULL;
     bool in_postcopy = migration_in_postcopy();
 
@@ -1499,10 +1501,11 @@ int qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only,
         goto flush;
     }
 
-    ret = qemu_savevm_state_complete_precopy_non_iterable(f, in_postcopy,
-                                                          inactivate_disks);
-    if (ret) {
-        return ret;
+    if (qemu_savevm_state_complete_precopy_non_iterable(f, in_postcopy,
+                                                        inactivate_disks,
+                                                        &local_err) < 0) {
+        error_report_err(local_err);
+        return -1;
     }
 
 flush:

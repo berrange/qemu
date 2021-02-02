@@ -3940,7 +3940,9 @@ static void *bg_migration_thread(void *opaque)
      * save their state to channel-buffer along with devices.
      */
     cpu_synchronize_all_states();
-    if (qemu_savevm_state_complete_precopy_non_iterable(fb, false, false)) {
+    if (qemu_savevm_state_complete_precopy_non_iterable(fb, false, false,
+                                                        &local_err) < 0) {
+        error_report_err(local_err);
         goto fail;
     }
     /* Now initialize UFFD context and start tracking RAM writes */

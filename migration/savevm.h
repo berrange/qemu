@@ -67,6 +67,8 @@ int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis,
                            Error **errp);
 int qemu_load_device_state(QEMUFile *f, Error **errp);
 int qemu_savevm_state_complete_precopy_non_iterable(QEMUFile *f,
-        bool in_postcopy, bool inactivate_disks);
+                                                    bool in_postcopy,
+                                                    bool inactivate_disks,
+                                                    Error **errp);
 
 #endif
