@@ -2863,9 +2863,8 @@ bool save_snapshot(const char *name, bool overwrite, const char *vmstate,
 
     saved_vm_running = runstate_is_running();
 
-    ret = global_state_store();
-    if (ret) {
-        error_setg(errp, "Error saving global state");
+    ret = global_state_store(errp);
+    if (ret < 0) {
         return false;
     }
     vm_stop(RUN_STATE_SAVE_VM);

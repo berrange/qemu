@@ -29,13 +29,13 @@ typedef struct {
 
 static GlobalState global_state;
 
-int global_state_store(void)
+int global_state_store(Error **errp)
 {
     if (!runstate_store((char *)global_state.runstate,
                         sizeof(global_state.runstate))) {
-        error_report("runstate name too big: %s", global_state.runstate);
+        error_setg(errp, "runstate name too big: %s", global_state.runstate);
         trace_migrate_state_too_big();
-        return -EINVAL;
+        return -1;
     }
     return 0;
 }

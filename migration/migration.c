@@ -2932,6 +2932,7 @@ static int postcopy_start(MigrationState *ms)
     int64_t bandwidth = migrate_max_postcopy_bandwidth();
     bool restart_block = false;
     int cur_state = MIGRATION_STATUS_ACTIVE;
+    Error *local_err = NULL;
     if (!migrate_pause_before_switchover()) {
         migrate_set_state(&ms->state, MIGRATION_STATUS_ACTIVE,
                           MIGRATION_STATUS_POSTCOPY_ACTIVE);
@@ -2942,9 +2943,10 @@ static int postcopy_start(MigrationState *ms)
     trace_postcopy_start_set_run();
 
     qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
-    global_state_store();
+    global_state_store(&local_err);
     ret = vm_stop_force_state(RUN_STATE_FINISH_MIGRATE);
     if (ret < 0) {
+        error_report_err(local_err);
         goto fail;
     }
 
@@ -3151,11 +3153,12 @@ static void migration_completion(MigrationState *s)
     int current_active_state = s->state;
 
     if (s->state == MIGRATION_STATUS_ACTIVE) {
+        Error *local_err = NULL;
         qemu_mutex_lock_iothread();
         s->downtime_start = qemu_clock_get_ms(QEMU_CLOCK_REALTIME);
         qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
         s->vm_was_running = runstate_is_running();
-        ret = global_state_store();
+        ret = global_state_store(&local_err);
 
         if (!ret) {
             bool inactivate = !migrate_colo_enabled();
@@ -3176,6 +3179,7 @@ static void migration_completion(MigrationState *s)
         qemu_mutex_unlock_iothread();
 
         if (ret < 0) {
+            error_report_err(local_err);
             goto fail;
         }
     } else if (s->state == MIGRATION_STATUS_POSTCOPY_ACTIVE) {
@@ -3843,6 +3847,7 @@ static void *bg_migration_thread(void *opaque)
     MigThrError thr_error;
     QEMUFile *fb;
     bool early_fail = true;
+    Error *local_err = NULL;
 
     rcu_register_thread();
     object_ref(OBJECT(s));
@@ -3898,7 +3903,8 @@ static void *bg_migration_thread(void *opaque)
     qemu_system_wakeup_request(QEMU_WAKEUP_REASON_OTHER, NULL);
     s->vm_was_running = runstate_is_running();
 
-    if (global_state_store()) {
+    if (global_state_store(&local_err)) {
+        error_report_err(local_err);
         goto fail;
     }
     /* Forcibly stop VM before saving state of vCPUs and devices */
