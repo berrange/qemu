@@ -432,11 +432,11 @@ void migration_incoming_disable_colo(void)
     migration_colo_enabled = false;
 }
 
-int migration_incoming_enable_colo(void)
+int migration_incoming_enable_colo(Error **errp)
 {
     if (ram_block_discard_disable(true)) {
-        error_report("COLO: cannot disable RAM discard");
-        return -EBUSY;
+        error_setg(errp, "COLO: cannot disable RAM discard");
+        return -1;
     }
     migration_colo_enabled = true;
     return 0;
