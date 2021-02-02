@@ -1365,7 +1365,8 @@ void qemu_savevm_state_complete_postcopy(QEMUFile *f)
 }
 
 static
-int qemu_savevm_state_complete_precopy_iterable(QEMUFile *f, bool in_postcopy)
+int qemu_savevm_state_complete_precopy_iterable(QEMUFile *f, bool in_postcopy,
+                                                Error **errp)
 {
     SaveStateEntry *se;
     int ret;
@@ -1391,6 +1392,8 @@ int qemu_savevm_state_complete_precopy_iterable(QEMUFile *f, bool in_postcopy)
         trace_savevm_section_end(se->idstr, se->section_id, ret);
         save_section_footer(f, se);
         if (ret < 0) {
+            error_setg_errno(errp, -ret,
+                             "failed to complete precopy device state save");
             qemu_file_set_error(f, ret);
             return -1;
         }
@@ -1485,9 +1488,10 @@ int qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only,
     cpu_synchronize_all_states();
 
     if (!in_postcopy || iterable_only) {
-        ret = qemu_savevm_state_complete_precopy_iterable(f, in_postcopy);
-        if (ret) {
-            return ret;
+        if (qemu_savevm_state_complete_precopy_iterable(f, in_postcopy,
+                                                        &local_err) < 0) {
+            error_report_err(local_err);
+            return -1;
         }
     }
 
