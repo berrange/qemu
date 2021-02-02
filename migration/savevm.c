@@ -1639,9 +1639,10 @@ int qemu_savevm_live_state(QEMUFile *f, Error **errp)
     return 0;
 }
 
-int qemu_save_device_state(QEMUFile *f)
+int qemu_save_device_state(QEMUFile *f, Error **errp)
 {
     SaveStateEntry *se;
+    int ret;
 
     if (!migration_in_colo_state()) {
         qemu_put_be32(f, QEMU_VM_FILE_MAGIC);
@@ -1650,7 +1651,6 @@ int qemu_save_device_state(QEMUFile *f)
     cpu_synchronize_all_states();
 
     QTAILQ_FOREACH(se, &savevm_state.handlers, entry) {
-        int ret;
 
         if (se->is_ram) {
             continue;
@@ -1665,8 +1665,9 @@ int qemu_save_device_state(QEMUFile *f)
         save_section_header(f, se, QEMU_VM_SECTION_FULL);
 
         ret = vmstate_save(f, se, NULL);
-        if (ret) {
-            return ret;
+        if (ret < 0) {
+            error_setg_errno(errp, -ret, "failed to save device state");
+            return -1;
         }
 
         save_section_footer(f, se);
@@ -1674,7 +1675,12 @@ int qemu_save_device_state(QEMUFile *f)
 
     qemu_put_byte(f, QEMU_VM_EOF);
 
-    return qemu_file_get_error(f);
+    ret = qemu_file_get_error(f);
+    if (ret < 0) {
+        error_setg_errno(errp, -ret, "I/O error saving device state");
+        return -1;
+    }
+    return 0;
 }
 
 static SaveStateEntry *find_se(const char *idstr, uint32_t instance_id)
@@ -2994,22 +3000,27 @@ void qmp_xen_save_devices_state(const char *filename, bool has_live, bool live,
     qio_channel_set_name(QIO_CHANNEL(ioc), "migration-xen-save-state");
     f = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
     object_unref(OBJECT(ioc));
-    ret = qemu_save_device_state(f);
-    if (ret < 0 || qemu_fclose(f) < 0) {
+    ret = qemu_save_device_state(f, errp);
+    if (ret < 0) {
+        goto the_end;
+    }
+
+    if (qemu_fclose(f) < 0) {
         error_setg(errp, QERR_IO_ERROR);
-    } else {
-        /* libxl calls the QMP command "stop" before calling
-         * "xen-save-devices-state" and in case of migration failure, libxl
-         * would call "cont".
-         * So call bdrv_inactivate_all (release locks) here to let the other
-         * side of the migration take control of the images.
-         */
-        if (live && !saved_vm_running) {
-            ret = bdrv_inactivate_all();
-            if (ret) {
-                error_setg(errp, "%s: bdrv_inactivate_all() failed (%d)",
-                           __func__, ret);
-            }
+        goto the_end;
+    }
+
+    /* libxl calls the QMP command "stop" before calling
+     * "xen-save-devices-state" and in case of migration failure, libxl
+     * would call "cont".
+     * So call bdrv_inactivate_all (release locks) here to let the other
+     * side of the migration take control of the images.
+     */
+    if (live && !saved_vm_running) {
+        ret = bdrv_inactivate_all();
+        if (ret) {
+            error_setg(errp, "%s: bdrv_inactivate_all() failed (%d)",
+                       __func__, ret);
         }
     }
 

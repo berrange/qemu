@@ -459,7 +459,7 @@ static int colo_do_checkpoint_transaction(MigrationState *s,
         goto out;
     }
     /* Note: device state is saved into buffer */
-    ret = qemu_save_device_state(fb);
+    ret = qemu_save_device_state(fb, &local_err);
 
     qemu_mutex_unlock_iothread();
     if (ret < 0) {
