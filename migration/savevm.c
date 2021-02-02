@@ -2208,7 +2208,8 @@ static int loadvm_handle_cmd_packaged(MigrationIncomingState *mis, Error **errp)
  * len (1 byte) + ramblock_name (<255 bytes)
  */
 static int loadvm_handle_recv_bitmap(MigrationIncomingState *mis,
-                                     uint16_t len)
+                                     uint16_t len,
+                                     Error **errp)
 {
     QEMUFile *file = mis->from_src_file;
     RAMBlock *rb;
@@ -2217,24 +2218,26 @@ static int loadvm_handle_recv_bitmap(MigrationIncomingState *mis,
 
     cnt = qemu_get_counted_string(file, block_name);
     if (!cnt) {
-        error_report("%s: failed to read block name", __func__);
-        return -EINVAL;
+        error_setg(errp, "%s: failed to read block name", __func__);
+        return -1;
     }
 
     /* Validate before using the data */
     if (qemu_file_get_error(file)) {
-        return qemu_file_get_error(file);
+        error_setg(errp, "migration stream has error: %d",
+                   qemu_file_get_error(file));
+        return -1;
     }
 
     if (len != cnt + 1) {
-        error_report("%s: invalid payload length (%d)", __func__, len);
-        return -EINVAL;
+        error_setg(errp, "%s: invalid payload length (%d)", __func__, len);
+        return -1;
     }
 
     rb = qemu_ram_block_by_name(block_name);
     if (!rb) {
-        error_report("%s: block '%s' not found", __func__, block_name);
-        return -EINVAL;
+        error_setg(errp, "%s: block '%s' not found", __func__, block_name);
+        return -1;
     }
 
     migrate_send_rp_recv_bitmap(mis, block_name);
@@ -2339,12 +2342,7 @@ static int loadvm_process_command(QEMUFile *f, Error **errp)
         return 0;
 
     case MIG_CMD_RECV_BITMAP:
-        ret = loadvm_handle_recv_bitmap(mis, len);
-        if (ret < 0) {
-            error_setg(errp, "Failed to load device state command: %d", ret);
-            return -1;
-        }
-        return ret;
+        return loadvm_handle_recv_bitmap(mis, len, errp);
 
     case MIG_CMD_ENABLE_COLO:
         ret = loadvm_process_enable_colo(mis);
