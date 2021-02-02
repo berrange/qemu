@@ -1854,6 +1854,7 @@ static void *postcopy_ram_listen_thread(void *opaque)
     QEMUFile *f = mis->from_src_file;
     int load_res;
     MigrationState *migr = migrate_get_current();
+    Error *local_err = NULL;
 
     object_ref(OBJECT(migr));
 
@@ -1868,7 +1869,7 @@ static void *postcopy_ram_listen_thread(void *opaque)
      * in qemu_file, and thus we must be blocking now.
      */
     qemu_file_set_blocking(f, true);
-    load_res = qemu_loadvm_state_main(f, mis);
+    load_res = qemu_loadvm_state_main(f, mis, &local_err);
 
     /*
      * This is tricky, but, mis->from_src_file can change after it
@@ -1884,6 +1885,7 @@ static void *postcopy_ram_listen_thread(void *opaque)
     if (load_res < 0) {
         qemu_file_set_error(f, load_res);
         dirty_bitmap_mig_cancel_incoming();
+        error_report_err(local_err);
         if (postcopy_state_get() == POSTCOPY_INCOMING_RUNNING &&
             !migrate_postcopy_ram() && migrate_dirty_bitmaps())
         {
@@ -1894,12 +1896,10 @@ static void *postcopy_ram_listen_thread(void *opaque)
                          __func__, load_res);
             load_res = 0; /* prevent further exit() */
         } else {
-            error_report("%s: loadvm failed: %d", __func__, load_res);
             migrate_set_state(&mis->state, MIGRATION_STATUS_POSTCOPY_ACTIVE,
                                            MIGRATION_STATUS_FAILED);
         }
-    }
-    if (load_res >= 0) {
+    } else {
         /*
          * This looks good, but it's possible that the device loading in the
          * main thread hasn't finished yet, and so we might not be in 'RUN'
@@ -2151,14 +2151,17 @@ static int loadvm_postcopy_handle_resume(MigrationIncomingState *mis)
  * @mis: Incoming state
  * @length: Length of packaged data to read
  *
- * Returns: Negative values on error
- *
+ * Returns:
+ *   0: success
+ *   LOADVM_QUIT: success, but stop
+ *   -1: error
  */
 static int loadvm_handle_cmd_packaged(MigrationIncomingState *mis)
 {
     int ret;
     size_t length;
     QIOChannelBuffer *bioc;
+    Error *local_err = NULL;
 
     length = qemu_get_be32(mis->from_src_file);
     trace_loadvm_handle_cmd_packaged(length);
@@ -2184,8 +2187,11 @@ static int loadvm_handle_cmd_packaged(MigrationIncomingState *mis)
 
     QEMUFile *packf = qemu_fopen_channel_input(QIO_CHANNEL(bioc));
 
-    ret = qemu_loadvm_state_main(packf, mis);
+    ret = qemu_loadvm_state_main(packf, mis, &local_err);
     trace_loadvm_handle_cmd_packaged_main(ret);
+    if (ret < 0) {
+        error_report_err(local_err);
+    }
     qemu_fclose(packf);
     object_unref(OBJECT(bioc));
 
@@ -2603,7 +2609,14 @@ static bool postcopy_pause_incoming(MigrationIncomingState *mis)
     return true;
 }
 
-int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis)
+/*
+ * Returns:
+ *   0: success
+ *   LOADVM_QUIT: success, but stop
+ *   -1: error
+ */
+int qemu_loadvm_state_main(QEMUFile *f, MigrationIncomingState *mis,
+                           Error **errp)
 {
     uint8_t section_type;
     int ret = 0;
@@ -2614,7 +2627,9 @@ retry:
 
         if (qemu_file_get_error(f)) {
             ret = qemu_file_get_error(f);
-            break;
+            error_setg(errp,
+                       "Failed to load device state section ID: %d", ret);
+            goto out;
         }
 
         trace_qemu_loadvm_state_section(section_type);
@@ -2623,6 +2638,9 @@ retry:
         case QEMU_VM_SECTION_FULL:
             ret = qemu_loadvm_section_start_full(f, mis);
             if (ret < 0) {
+                error_setg(errp,
+                           "Failed to load device state section start: %d",
+                           ret);
                 goto out;
             }
             break;
@@ -2630,29 +2648,38 @@ retry:
         case QEMU_VM_SECTION_END:
             ret = qemu_loadvm_section_part_end(f, mis);
             if (ret < 0) {
+                error_setg(errp,
+                           "Failed to load device state section end: %d", ret);
                 goto out;
             }
             break;
         case QEMU_VM_COMMAND:
             ret = loadvm_process_command(f);
             trace_qemu_loadvm_state_section_command(ret);
-            if ((ret < 0) || (ret == LOADVM_QUIT)) {
+            if (ret < 0) {
+                error_setg(errp,
+                           "Failed to load device state command: %d", ret);
+                goto out;
+            }
+            if (ret == LOADVM_QUIT) {
                 goto out;
             }
             break;
         case QEMU_VM_EOF:
             /* This is the end of migration */
+            ret = 0;
             goto out;
         default:
-            error_report("Unknown savevm section type %d", section_type);
-            ret = -EINVAL;
+            error_setg(errp,
+                       "Unknown savevm section type %d", section_type);
+            ret = -1;
             goto out;
         }
     }
 
 out:
     if (ret < 0) {
-        qemu_file_set_error(f, ret);
+        qemu_file_set_error(f, -EINVAL);
 
         /* Cancel bitmaps incoming regardless of recovery */
         dirty_bitmap_mig_cancel_incoming();
@@ -2678,6 +2705,12 @@ out:
     return ret;
 }
 
+/*
+ * Returns:
+ *   0: success
+ *   LOADVM_QUIT: success, but stop
+ *   -1: error
+ */
 int qemu_loadvm_state(QEMUFile *f, Error **errp)
 {
     MigrationIncomingState *mis = migration_incoming_get_current();
@@ -2697,17 +2730,12 @@ int qemu_loadvm_state(QEMUFile *f, Error **errp)
 
     cpu_synchronize_all_pre_loadvm();
 
-    ret = qemu_loadvm_state_main(f, mis);
-    if (ret < 0) {
-        error_setg(errp, "Error %d while loading VM state", ret);
-        ret = -1;
-    }
+    ret = qemu_loadvm_state_main(f, mis, errp);
     qemu_event_set(&mis->main_thread_load_event);
 
     trace_qemu_loadvm_state_post_main(ret);
 
     if (mis->have_listen_thread) {
-        error_setg(errp, "Error %d while loading VM state", ret);
         /* Listen thread still going, can't clean up yet */
         return ret;
     }
@@ -2764,13 +2792,10 @@ int qemu_loadvm_state(QEMUFile *f, Error **errp)
 int qemu_load_device_state(QEMUFile *f, Error **errp)
 {
     MigrationIncomingState *mis = migration_incoming_get_current();
-    int ret;
 
     /* Load QEMU_VM_SECTION_FULL section */
-    ret = qemu_loadvm_state_main(f, mis);
-    if (ret < 0) {
-        error_setg(errp, "Failed to load device state: %d", ret);
-        return ret;
+    if (qemu_loadvm_state_main(f, mis, errp) < 0) {
+        return -1;
     }
 
     cpu_synchronize_all_post_init();
