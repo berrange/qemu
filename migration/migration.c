@@ -3311,7 +3311,7 @@ typedef enum MigThrError {
     MIG_THR_ERR_FATAL = 2,
 } MigThrError;
 
-static int postcopy_resume_handshake(MigrationState *s)
+static int postcopy_resume_handshake(MigrationState *s, Error **errp)
 {
     qemu_savevm_send_postcopy_resume(s->to_dst_file);
 
@@ -3323,13 +3323,14 @@ static int postcopy_resume_handshake(MigrationState *s)
         return 0;
     }
 
+    error_setg(errp, "postcopy resume handshake failed state %x != %x",
+               s->state, MIGRATION_STATUS_POSTCOPY_ACTIVE);
     return -1;
 }
 
 /* Return zero if success, or <0 for error */
 static int postcopy_do_resume(MigrationState *s)
 {
-    int ret;
     Error *local_err = NULL;
 
     /*
@@ -3345,10 +3346,9 @@ static int postcopy_do_resume(MigrationState *s)
      * Last handshake with destination on the resume (destination will
      * switch to postcopy-active afterwards)
      */
-    ret = postcopy_resume_handshake(s);
-    if (ret) {
-        error_report("%s: handshake failed: %d", __func__, ret);
-        return ret;
+    if (postcopy_resume_handshake(s, &local_err) < 0) {
+        error_report_err(local_err);
+        return -1;
     }
 
     return 0;
