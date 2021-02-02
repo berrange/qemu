@@ -2452,7 +2452,8 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis,
 }
 
 static int
-qemu_loadvm_section_part_end(QEMUFile *f, MigrationIncomingState *mis)
+qemu_loadvm_section_part_end(QEMUFile *f, MigrationIncomingState *mis,
+                             Error **errp)
 {
     uint32_t section_id;
     SaveStateEntry *se;
@@ -2462,9 +2463,9 @@ qemu_loadvm_section_part_end(QEMUFile *f, MigrationIncomingState *mis)
 
     ret = qemu_file_get_error(f);
     if (ret) {
-        error_report("%s: Failed to read section ID: %d",
-                     __func__, ret);
-        return ret;
+        error_setg(errp, "failed to read device state section end ID: %d",
+                   ret);
+        return -1;
     }
 
     trace_qemu_loadvm_state_section_partend(section_id);
@@ -2474,18 +2475,19 @@ qemu_loadvm_section_part_end(QEMUFile *f, MigrationIncomingState *mis)
         }
     }
     if (se == NULL) {
-        error_report("Unknown savevm section %d", section_id);
-        return -EINVAL;
+        error_setg(errp, "unknown savevm section %d", section_id);
+        return -1;
     }
 
     ret = vmstate_load(f, se);
     if (ret < 0) {
-        error_report("error while loading state section id %d(%s)",
-                     section_id, se->idstr);
-        return ret;
+        error_setg(errp, "error while loading state section id %d(%s)",
+                   section_id, se->idstr);
+        return -1;
     }
     if (!check_section_footer(f, se)) {
-        return -EINVAL;
+        error_setg(errp, "failed check for device state section footer");
+        return -1;
     }
 
     return 0;
@@ -2645,10 +2647,8 @@ retry:
             break;
         case QEMU_VM_SECTION_PART:
         case QEMU_VM_SECTION_END:
-            ret = qemu_loadvm_section_part_end(f, mis);
+            ret = qemu_loadvm_section_part_end(f, mis, errp);
             if (ret < 0) {
-                error_setg(errp,
-                           "Failed to load device state section end: %d", ret);
                 goto out;
             }
             break;
