@@ -3328,17 +3328,14 @@ static int postcopy_resume_handshake(MigrationState *s, Error **errp)
     return -1;
 }
 
-/* Return zero if success, or <0 for error */
-static int postcopy_do_resume(MigrationState *s)
+/* Return zero if success, or -1 for error */
+static int postcopy_do_resume(MigrationState *s, Error **errp)
 {
-    Error *local_err = NULL;
-
     /*
      * Call all the resume_prepare() hooks, so that modules can be
      * ready for the migration resume.
      */
-    if (qemu_savevm_state_resume_prepare(s, &local_err) < 0) {
-        error_report_err(local_err);
+    if (qemu_savevm_state_resume_prepare(s, errp) < 0) {
         return -1;
     }
 
@@ -3346,8 +3343,7 @@ static int postcopy_do_resume(MigrationState *s)
      * Last handshake with destination on the resume (destination will
      * switch to postcopy-active afterwards)
      */
-    if (postcopy_resume_handshake(s, &local_err) < 0) {
-        error_report_err(local_err);
+    if (postcopy_resume_handshake(s, errp) < 0) {
         return -1;
     }
 
@@ -3361,6 +3357,7 @@ static int postcopy_do_resume(MigrationState *s)
  */
 static MigThrError postcopy_pause(MigrationState *s)
 {
+    Error *local_err = NULL;
     assert(s->state == MIGRATION_STATUS_POSTCOPY_ACTIVE);
 
     while (true) {
@@ -3400,7 +3397,7 @@ static MigThrError postcopy_pause(MigrationState *s)
             qemu_sem_post(&s->postcopy_pause_rp_sem);
 
             /* Do the resume logic */
-            if (postcopy_do_resume(s) == 0) {
+            if (postcopy_do_resume(s, &local_err) == 0) {
                 /* Let's continue! */
                 trace_postcopy_pause_continued();
                 return MIG_THR_ERR_RECOVERED;
@@ -3410,6 +3407,7 @@ static MigThrError postcopy_pause(MigrationState *s)
                  * pause again. Pause is always better than throwing
                  * data away.
                  */
+                error_report_err(local_err);
                 continue;
             }
         } else {
