@@ -554,7 +554,7 @@ static void process_incoming_migration_co(void *opaque)
     postcopy_state_set(POSTCOPY_INCOMING_NONE);
     migrate_set_state(&mis->state, MIGRATION_STATUS_NONE,
                       MIGRATION_STATUS_ACTIVE);
-    ret = qemu_loadvm_state(mis->from_src_file);
+    ret = qemu_loadvm_state(mis->from_src_file, &local_err);
 
     ps = postcopy_state_get();
     trace_process_incoming_migration_co_end(ret, ps);
@@ -598,7 +598,7 @@ static void process_incoming_migration_co(void *opaque)
     }
 
     if (ret < 0) {
-        error_report("load of migration failed: %s", strerror(-ret));
+        error_report_err(local_err);
         goto fail;
     }
     mis->bh = qemu_bh_new(process_incoming_migration_bh, mis);

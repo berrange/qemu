@@ -2673,40 +2673,49 @@ out:
     return ret;
 }
 
-int qemu_loadvm_state(QEMUFile *f)
+int qemu_loadvm_state(QEMUFile *f, Error **errp)
 {
     MigrationIncomingState *mis = migration_incoming_get_current();
-    Error *local_err = NULL;
     int ret;
 
-    if (qemu_savevm_state_blocked(&local_err)) {
-        error_report_err(local_err);
-        return -EINVAL;
+    if (qemu_savevm_state_blocked(errp)) {
+        return -1;
     }
 
     ret = qemu_loadvm_state_header(f);
     if (ret) {
-        return ret;
+        error_setg(errp, "Error %d while loading VM state", ret);
+        return -1;
     }
 
     if (qemu_loadvm_state_setup(f) != 0) {
-        return -EINVAL;
+        error_setg(errp, "Error %d while loading VM state", -EINVAL);
+        return -1;
     }
 
     cpu_synchronize_all_pre_loadvm();
 
     ret = qemu_loadvm_state_main(f, mis);
+    if (ret < 0) {
+        error_setg(errp, "Error %d while loading VM state", ret);
+        ret = -1;
+    }
     qemu_event_set(&mis->main_thread_load_event);
 
     trace_qemu_loadvm_state_post_main(ret);
 
     if (mis->have_listen_thread) {
+        error_setg(errp, "Error %d while loading VM state", ret);
         /* Listen thread still going, can't clean up yet */
         return ret;
     }
 
     if (ret == 0) {
         ret = qemu_file_get_error(f);
+        if (ret < 0) {
+            error_setg(errp, "Error %d while loading VM state", ret);
+            ret = -1;
+        }
     }
 
     /*
@@ -2725,8 +2734,8 @@ int qemu_loadvm_state(QEMUFile *f)
         uint8_t  section_type = qemu_get_byte(f);
 
         if (section_type != QEMU_VM_VMDESCRIPTION) {
-            error_report("Expected vmdescription section, but got %d",
-                         section_type);
+            error_setg(errp, "Expected vmdescription section, but got %d",
+                       section_type);
             /*
              * It doesn't seem worth failing at this point since
              * we apparently have an otherwise valid VM state
@@ -2956,7 +2965,6 @@ void qmp_xen_load_devices_state(const char *filename, Error **errp)
 {
     QEMUFile *f;
     QIOChannelFile *ioc;
-    int ret;
 
     /* Guest must be paused before loading the device state; the RAM state
      * will already have been loaded by xc
@@ -2975,11 +2983,8 @@ void qmp_xen_load_devices_state(const char *filename, Error **errp)
     f = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
     object_unref(OBJECT(ioc));
 
-    ret = qemu_loadvm_state(f);
+    qemu_loadvm_state(f, errp);
     qemu_fclose(f);
-    if (ret < 0) {
-        error_setg(errp, QERR_IO_ERROR);
-    }
     migration_incoming_state_destroy();
 }
 
@@ -3053,14 +3058,13 @@ bool load_snapshot(const char *name, const char *vmstate,
         goto err_drain;
     }
     aio_context_acquire(aio_context);
-    ret = qemu_loadvm_state(f);
+    ret = qemu_loadvm_state(f, errp);
     migration_incoming_state_destroy();
     aio_context_release(aio_context);
 
     bdrv_drain_all_end();
 
     if (ret < 0) {
-        error_setg(errp, "Error %d while loading VM state", ret);
         return false;
     }
 
