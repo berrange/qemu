@@ -1629,14 +1629,14 @@ static int qemu_savevm_state(QEMUFile *f, Error **errp)
     return -1;
 }
 
-void qemu_savevm_live_state(QEMUFile *f)
+int qemu_savevm_live_state(QEMUFile *f, Error **errp)
 {
-    Error *local_err = NULL;
     /* save QEMU_VM_SECTION_END section */
-    if (qemu_savevm_state_complete_precopy(f, true, false, &local_err) < 0) {
-        error_report_err(local_err);
+    if (qemu_savevm_state_complete_precopy(f, true, false, errp) < 0) {
+        return -1;
     }
     qemu_put_byte(f, QEMU_VM_EOF);
+    return 0;
 }
 
 int qemu_save_device_state(QEMUFile *f)

@@ -470,7 +470,9 @@ static int colo_do_checkpoint_transaction(MigrationState *s,
      * TODO: We may need a timeout mechanism to prevent COLO process
      * to be blocked here.
      */
-    qemu_savevm_live_state(s->to_dst_file);
+    if (qemu_savevm_live_state(s->to_dst_file, &local_err) < 0) {
+        goto out;
+    }
 
     qemu_fflush(fb);
 
