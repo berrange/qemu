@@ -2896,10 +2896,7 @@ bool save_snapshot(const char *name, bool overwrite, const char *vmstate,
 
     /* save the VM state */
     f = qemu_fopen_bdrv(bs, 1);
-    if (!f) {
-        error_setg(errp, "Could not open VM state file");
-        goto the_end;
-    }
+
     ret = qemu_savevm_state(f, errp);
     vm_state_size = qemu_ftell(f);
     ret2 = qemu_fclose(f);
@@ -3076,10 +3073,6 @@ bool load_snapshot(const char *name, const char *vmstate,
 
     /* restore the VM state */
     f = qemu_fopen_bdrv(bs_vm_state, 0);
-    if (!f) {
-        error_setg(errp, "Could not open VM state file");
-        goto err_drain;
-    }
 
     qemu_system_reset(SHUTDOWN_CAUSE_NONE);
     mis->from_src_file = f;
