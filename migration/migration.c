@@ -2966,7 +2966,11 @@ static int postcopy_start(MigrationState *ms)
      * Cause any non-postcopiable, but iterative devices to
      * send out their final data.
      */
-    qemu_savevm_state_complete_precopy(ms->to_dst_file, true, false);
+    if (qemu_savevm_state_complete_precopy(ms->to_dst_file, true, false,
+                                           &local_err) < 0) {
+        error_report_err(local_err);
+        goto fail;
+    }
 
     /*
      * in Finish migrate and with the io-lock held everything should
@@ -3019,7 +3023,10 @@ static int postcopy_start(MigrationState *ms)
      */
     qemu_savevm_send_postcopy_listen(fb);
 
-    qemu_savevm_state_complete_precopy(fb, false, false);
+    if (qemu_savevm_state_complete_precopy(fb, false, false, &local_err) < 0) {
+        error_report_err(local_err);
+        goto fail_closefb;
+    }
     if (migrate_postcopy_ram()) {
         qemu_savevm_send_ping(fb, 3);
     }
@@ -3170,7 +3177,8 @@ static void migration_completion(MigrationState *s)
             if (ret >= 0) {
                 qemu_file_set_rate_limit(s->to_dst_file, INT64_MAX);
                 ret = qemu_savevm_state_complete_precopy(s->to_dst_file, false,
-                                                         inactivate);
+                                                         inactivate,
+                                                         &local_err);
             }
             if (inactivate && ret >= 0) {
                 s->block_inactive = true;

@@ -1476,7 +1476,8 @@ int qemu_savevm_state_complete_precopy_non_iterable(QEMUFile *f,
 }
 
 int qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only,
-                                       bool inactivate_disks)
+                                       bool inactivate_disks,
+                                       Error **errp)
 {
     Error *local_err = NULL;
     bool in_postcopy = migration_in_postcopy();
@@ -1491,8 +1492,7 @@ int qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only,
 
     if (!in_postcopy || iterable_only) {
         if (qemu_savevm_state_complete_precopy_iterable(f, in_postcopy,
-                                                        &local_err) < 0) {
-            error_report_err(local_err);
+                                                        errp) < 0) {
             return -1;
         }
     }
@@ -1503,8 +1503,7 @@ int qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only,
 
     if (qemu_savevm_state_complete_precopy_non_iterable(f, in_postcopy,
                                                         inactivate_disks,
-                                                        &local_err) < 0) {
-        error_report_err(local_err);
+                                                        errp) < 0) {
         return -1;
     }
 
@@ -1603,7 +1602,9 @@ static int qemu_savevm_state(QEMUFile *f, Error **errp)
         }
     }
 
-    qemu_savevm_state_complete_precopy(f, false, false);
+    if (qemu_savevm_state_complete_precopy(f, false, false, errp) < 0) {
+        goto fail;
+    }
     ret = qemu_file_get_error(f);
     if (ret != 0) {
         error_setg_errno(errp, -ret, "Error while writing VM state");
@@ -1629,8 +1630,11 @@ static int qemu_savevm_state(QEMUFile *f, Error **errp)
 
 void qemu_savevm_live_state(QEMUFile *f)
 {
+    Error *local_err = NULL;
     /* save QEMU_VM_SECTION_END section */
-    qemu_savevm_state_complete_precopy(f, true, false);
+    if (qemu_savevm_state_complete_precopy(f, true, false, &local_err) < 0) {
+        error_report_err(local_err);
+    }
     qemu_put_byte(f, QEMU_VM_EOF);
 }
 

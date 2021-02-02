@@ -39,7 +39,8 @@ int qemu_savevm_state_iterate(QEMUFile *f, bool postcopy, Error **errp);
 void qemu_savevm_state_cleanup(void);
 void qemu_savevm_state_complete_postcopy(QEMUFile *f);
 int qemu_savevm_state_complete_precopy(QEMUFile *f, bool iterable_only,
-                                       bool inactivate_disks);
+                                       bool inactivate_disks,
+                                       Error **errp);
 void qemu_savevm_state_pending(QEMUFile *f, uint64_t max_size,
                                uint64_t *res_precopy_only,
                                uint64_t *res_compatible,
