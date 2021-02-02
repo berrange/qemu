@@ -2525,7 +2525,7 @@ static int qemu_loadvm_state_header(QEMUFile *f, Error **errp)
     return 0;
 }
 
-static int qemu_loadvm_state_setup(QEMUFile *f)
+static int qemu_loadvm_state_setup(QEMUFile *f, Error **errp)
 {
     SaveStateEntry *se;
     int ret;
@@ -2544,7 +2544,7 @@ static int qemu_loadvm_state_setup(QEMUFile *f)
         ret = se->ops->load_setup(f, se->opaque);
         if (ret < 0) {
             qemu_file_set_error(f, ret);
-            error_report("Load state of device %s failed", se->idstr);
+            error_setg(errp, "Load state of device %s failed", se->idstr);
             return ret;
         }
     }
@@ -2691,8 +2691,7 @@ int qemu_loadvm_state(QEMUFile *f, Error **errp)
         return -1;
     }
 
-    if (qemu_loadvm_state_setup(f) != 0) {
-        error_setg(errp, "Error %d while loading VM state", -EINVAL);
+    if (qemu_loadvm_state_setup(f, errp) < 0) {
         return -1;
     }
 
