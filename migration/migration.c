@@ -3558,6 +3558,8 @@ static MigIterateState migration_iteration_run(MigrationState *s)
                           pend_pre, pend_compat, pend_post);
 
     if (pending_size && pending_size >= s->threshold_size) {
+        int ret;
+        Error *local_err = NULL;
         /* Still a significant amount to transfer */
         if (!in_postcopy && pend_pre <= s->threshold_size &&
             qatomic_read(&s->start_postcopy)) {
@@ -3567,7 +3569,11 @@ static MigIterateState migration_iteration_run(MigrationState *s)
             return MIG_ITERATE_SKIP;
         }
         /* Just another iteration step */
-        qemu_savevm_state_iterate(s->to_dst_file, in_postcopy);
+        ret = qemu_savevm_state_iterate(s->to_dst_file, in_postcopy,
+                                        &local_err);
+        if (ret < 0) {
+            error_report_err(local_err);
+        }
     } else {
         trace_migration_thread_low_pending(pending_size);
         migration_completion(s);
@@ -3657,9 +3663,17 @@ static void bg_migration_iteration_finish(MigrationState *s)
 static MigIterateState bg_migration_iteration_run(MigrationState *s)
 {
     int res;
+    Error *local_err = NULL;
 
-    res = qemu_savevm_state_iterate(s->to_dst_file, false);
+    res = qemu_savevm_state_iterate(s->to_dst_file, false, &local_err);
     if (res > 0) {
+        bg_migration_completion(s);
+        return MIG_ITERATE_BREAK;
+    }
+    if (res < 0) {
+        error_report_err(local_err);
+        migrate_set_state(&s->state, MIGRATION_STATUS_SETUP,
+                          MIGRATION_STATUS_FAILED);
         bg_migration_completion(s);
         return MIG_ITERATE_BREAK;
     }

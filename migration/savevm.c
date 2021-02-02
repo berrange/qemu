@@ -1256,8 +1256,9 @@ int qemu_savevm_state_resume_prepare(MigrationState *s)
  *   negative: there was one error, and we have -errno.
  *   0 : We haven't finished, caller have to go again
  *   1 : We have finished, we can go to complete phase
+ *  -1 : error reported, go to cleanup phase
  */
-int qemu_savevm_state_iterate(QEMUFile *f, bool postcopy)
+int qemu_savevm_state_iterate(QEMUFile *f, bool postcopy, Error **errp)
 {
     SaveStateEntry *se;
     int ret = 1;
@@ -1297,11 +1298,13 @@ int qemu_savevm_state_iterate(QEMUFile *f, bool postcopy)
         save_section_footer(f, se);
 
         if (ret < 0) {
-            error_report("failed to save SaveStateEntry with id(name): %d(%s)",
-                         se->section_id, se->idstr);
+            error_setg(errp,
+                       "failed to save SaveStateEntry with id(name): %d(%s)",
+                       se->section_id, se->idstr);
             qemu_file_set_error(f, ret);
+            return -1;
         }
-        if (ret <= 0) {
+        if (ret == 0) {
             /* Do not proceed to the next vmstate before this one reported
                completion of the current stage. This serializes the migration
                and reduces the probability that a faster changing state is
@@ -1552,7 +1555,6 @@ static int qemu_savevm_state(QEMUFile *f, Error **errp)
 {
     int ret;
     MigrationState *ms = migrate_get_current();
-    MigrationStatus status;
 
     if (migration_is_running(ms->state)) {
         error_setg(errp, QERR_MIGRATION_ACTIVE);
@@ -1573,34 +1575,43 @@ static int qemu_savevm_state(QEMUFile *f, Error **errp)
     qemu_savevm_state_setup(f);
     qemu_mutex_lock_iothread();
 
-    while (qemu_file_get_error(f) == 0) {
-        if (qemu_savevm_state_iterate(f, false) > 0) {
+    while (1) {
+        ret = qemu_savevm_state_iterate(f, false, errp);
+        if (ret < 0) {
+            goto fail;
+        }
+        if (ret > 0) {
             break;
+        }
+        ret = qemu_file_get_error(f);
+        if (ret != 0) {
+            error_setg_errno(errp, -ret, "Error while writing VM state");
+            goto fail;
         }
     }
 
+    qemu_savevm_state_complete_precopy(f, false, false);
     ret = qemu_file_get_error(f);
-    if (ret == 0) {
-        qemu_savevm_state_complete_precopy(f, false, false);
-        ret = qemu_file_get_error(f);
-    }
-    qemu_savevm_state_cleanup();
     if (ret != 0) {
         error_setg_errno(errp, -ret, "Error while writing VM state");
+        goto fail;
     }
 
-    if (ret != 0) {
-        status = MIGRATION_STATUS_FAILED;
-    } else {
-        status = MIGRATION_STATUS_COMPLETED;
-    }
-    migrate_set_state(&ms->state, MIGRATION_STATUS_SETUP, status);
+    qemu_savevm_state_cleanup();
+    migrate_set_state(&ms->state, MIGRATION_STATUS_SETUP,
+                      MIGRATION_STATUS_COMPLETED);
 
     /* f is outer parameter, it should not stay in global migration state after
      * this function finished */
     ms->to_dst_file = NULL;
 
     return ret;
+
+ fail:
+    qemu_savevm_state_cleanup();
+    migrate_set_state(&ms->state, MIGRATION_STATUS_SETUP,
+                      MIGRATION_STATUS_FAILED);
+    return -1;
 }
 
 void qemu_savevm_live_state(QEMUFile *f)
