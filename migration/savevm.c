@@ -2156,18 +2156,18 @@ static int loadvm_postcopy_handle_resume(MigrationIncomingState *mis)
  *   LOADVM_QUIT: success, but stop
  *   -1: error
  */
-static int loadvm_handle_cmd_packaged(MigrationIncomingState *mis)
+static int loadvm_handle_cmd_packaged(MigrationIncomingState *mis, Error **errp)
 {
     int ret;
     size_t length;
     QIOChannelBuffer *bioc;
-    Error *local_err = NULL;
 
     length = qemu_get_be32(mis->from_src_file);
     trace_loadvm_handle_cmd_packaged(length);
 
     if (length > MAX_VM_CMD_PACKAGED_SIZE) {
-        error_report("Unreasonably large packaged state: %zu", length);
+        error_setg(errp, "Unreasonably large packaged state: %zu > %d",
+                   length, MAX_VM_CMD_PACKAGED_SIZE);
         return -1;
     }
 
@@ -2178,20 +2178,17 @@ static int loadvm_handle_cmd_packaged(MigrationIncomingState *mis)
                           length);
     if (ret != length) {
         object_unref(OBJECT(bioc));
-        error_report("CMD_PACKAGED: Buffer receive fail ret=%d length=%zu",
-                     ret, length);
-        return (ret < 0) ? ret : -EAGAIN;
+        error_setg(errp, "CMD_PACKAGED: Buffer receive fail ret=%d length=%zu",
+                   ret, length);
+        return -1;
     }
     bioc->usage += length;
     trace_loadvm_handle_cmd_packaged_received(ret);
 
     QEMUFile *packf = qemu_fopen_channel_input(QIO_CHANNEL(bioc));
 
-    ret = qemu_loadvm_state_main(packf, mis, &local_err);
+    ret = qemu_loadvm_state_main(packf, mis, errp);
     trace_loadvm_handle_cmd_packaged_main(ret);
-    if (ret < 0) {
-        error_report_err(local_err);
-    }
     qemu_fclose(packf);
     object_unref(OBJECT(bioc));
 
@@ -2317,12 +2314,7 @@ static int loadvm_process_command(QEMUFile *f, Error **errp)
         break;
 
     case MIG_CMD_PACKAGED:
-        ret = loadvm_handle_cmd_packaged(mis);
-        if (ret < 0) {
-            error_setg(errp, "Failed to load device state command: %d", ret);
-            return -1;
-        }
-        return ret;
+        return loadvm_handle_cmd_packaged(mis, errp);
 
     case MIG_CMD_POSTCOPY_ADVISE:
         ret = loadvm_postcopy_handle_advise(mis, len);
