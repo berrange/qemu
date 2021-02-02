@@ -1025,15 +1025,16 @@ void qemu_savevm_send_open_return_path(QEMUFile *f)
  *
  * Returns:
  *    0 on success
- *    -ve on error
+ *    -1 on error
  */
-int qemu_savevm_send_packaged(QEMUFile *f, const uint8_t *buf, size_t len)
+int qemu_savevm_send_packaged(QEMUFile *f, const uint8_t *buf, size_t len,
+                              Error **errp)
 {
     uint32_t tmp;
 
     if (len > MAX_VM_CMD_PACKAGED_SIZE) {
-        error_report("%s: Unreasonably large packaged state: %zu",
-                     __func__, len);
+        error_setg(errp, "unreasonably large packaged state: %zu > %d",
+                   len, MAX_VM_CMD_PACKAGED_SIZE);
         return -1;
     }
 

@@ -3048,7 +3048,9 @@ static int postcopy_start(MigrationState *ms)
     restart_block = false;
 
     /* Now send that blob */
-    if (qemu_savevm_send_packaged(ms->to_dst_file, bioc->data, bioc->usage)) {
+    if (qemu_savevm_send_packaged(ms->to_dst_file, bioc->data, bioc->usage,
+                                  &local_err)) {
+        error_report_err(local_err);
         goto fail_closefb;
     }
     qemu_fclose(fb);
