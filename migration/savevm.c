@@ -2355,9 +2355,9 @@ static int loadvm_process_command(QEMUFile *f, Error **errp)
  * Read a footer off the wire and check that it matches the expected section
  *
  * Returns: true if the footer was good
- *          false if there is a problem (and calls error_report to say why)
+ *          false if there is a problem
  */
-static bool check_section_footer(QEMUFile *f, SaveStateEntry *se)
+static bool check_section_footer(QEMUFile *f, SaveStateEntry *se, Error **errp)
 {
     int ret;
     uint8_t read_mark;
@@ -2372,21 +2372,21 @@ static bool check_section_footer(QEMUFile *f, SaveStateEntry *se)
 
     ret = qemu_file_get_error(f);
     if (ret) {
-        error_report("%s: Read section footer failed: %d",
-                     __func__, ret);
+        error_setg(errp, "read section footer failed: %d",
+                   ret);
         return false;
     }
 
     if (read_mark != QEMU_VM_SECTION_FOOTER) {
-        error_report("Missing section footer for %s", se->idstr);
+        error_setg(errp, "Missing section footer for %s", se->idstr);
         return false;
     }
 
     read_section_id = qemu_get_be32(f);
     if (read_section_id != se->load_section_id) {
-        error_report("Mismatched section id in footer for %s -"
-                     " read 0x%x expected 0x%x",
-                     se->idstr, read_section_id, se->load_section_id);
+        error_setg(errp, "Mismatched section id in footer for %s -"
+                   " read 0x%x expected 0x%x",
+                   se->idstr, read_section_id, se->load_section_id);
         return false;
     }
 
@@ -2453,8 +2453,7 @@ qemu_loadvm_section_start_full(QEMUFile *f, MigrationIncomingState *mis,
                    " device '%s'", instance_id, idstr);
         return -1;
     }
-    if (!check_section_footer(f, se)) {
-        error_setg(errp, "failed check for device state section footer");
+    if (!check_section_footer(f, se, errp)) {
         return -1;
     }
 
@@ -2495,8 +2494,7 @@ qemu_loadvm_section_part_end(QEMUFile *f, MigrationIncomingState *mis,
                    section_id, se->idstr);
         return -1;
     }
-    if (!check_section_footer(f, se)) {
-        error_setg(errp, "failed check for device state section footer");
+    if (!check_section_footer(f, se, errp)) {
         return -1;
     }
 
