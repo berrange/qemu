@@ -2483,38 +2483,43 @@ qemu_loadvm_section_part_end(QEMUFile *f, MigrationIncomingState *mis)
     return 0;
 }
 
-static int qemu_loadvm_state_header(QEMUFile *f)
+static int qemu_loadvm_state_header(QEMUFile *f, Error **errp)
 {
     unsigned int v;
     int ret;
 
     v = qemu_get_be32(f);
     if (v != QEMU_VM_FILE_MAGIC) {
-        error_report("Not a migration stream");
-        return -EINVAL;
+        error_setg(errp, "Not a migration stream, magic %x != %x",
+                   v, QEMU_VM_FILE_MAGIC);
+        return -1;
     }
 
     v = qemu_get_be32(f);
     if (v == QEMU_VM_FILE_VERSION_COMPAT) {
-        error_report("SaveVM v2 format is obsolete and don't work anymore");
-        return -ENOTSUP;
+        error_setg(errp, "SaveVM v2 format is obsolete and don't work anymore");
+        return -1;
     }
     if (v != QEMU_VM_FILE_VERSION) {
-        error_report("Unsupported migration stream version");
-        return -ENOTSUP;
+        error_setg(errp, "Unsupported migration stream, version %x != %x",
+                   v, QEMU_VM_FILE_VERSION);
+        return -1;
     }
 
     if (migrate_get_current()->send_configuration) {
-        if (qemu_get_byte(f) != QEMU_VM_CONFIGURATION) {
-            error_report("Configuration section missing");
+        v = qemu_get_byte(f);
+        if (v != QEMU_VM_CONFIGURATION) {
+            error_setg(errp, "Configuration section missing, %x != %x",
+                       v, QEMU_VM_CONFIGURATION);
             qemu_loadvm_state_cleanup();
-            return -EINVAL;
+            return -1;
         }
         ret = vmstate_load_state(f, &vmstate_configuration, &savevm_state, 0);
 
         if (ret) {
+            error_setg(errp, "Error %d while loading VM state", ret);
             qemu_loadvm_state_cleanup();
-            return ret;
+            return -1;
         }
     }
     return 0;
@@ -2682,9 +2687,7 @@ int qemu_loadvm_state(QEMUFile *f, Error **errp)
         return -1;
     }
 
-    ret = qemu_loadvm_state_header(f);
-    if (ret) {
-        error_setg(errp, "Error %d while loading VM state", ret);
+    if (qemu_loadvm_state_header(f, errp) < 0) {
         return -1;
     }
 
