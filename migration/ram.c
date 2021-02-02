@@ -3315,7 +3315,7 @@ static void colo_init_ram_state(void)
  * memory of the secondary VM, it is need to hold the global lock
  * to call this helper.
  */
-int colo_init_ram_cache(void)
+int colo_init_ram_cache(Error **errp)
 {
     RAMBlock *block;
 
@@ -3325,16 +3325,17 @@ int colo_init_ram_cache(void)
                                                     NULL,
                                                     false);
             if (!block->colo_cache) {
-                error_report("%s: Can't alloc memory for COLO cache of block %s,"
-                             "size 0x" RAM_ADDR_FMT, __func__, block->idstr,
-                             block->used_length);
+                error_setg_errno(errp, errno,
+                                 "%s: Can't alloc memory for COLO cache of block %s,"
+                                 "size 0x" RAM_ADDR_FMT, __func__, block->idstr,
+                                 block->used_length);
                 RAMBLOCK_FOREACH_NOT_IGNORED(block) {
                     if (block->colo_cache) {
                         qemu_anon_ram_free(block->colo_cache, block->used_length);
                         block->colo_cache = NULL;
                     }
                 }
-                return -errno;
+                return -1;
             }
         }
     }

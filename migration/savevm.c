@@ -2250,17 +2250,15 @@ static int loadvm_handle_recv_bitmap(MigrationIncomingState *mis,
 static int loadvm_process_enable_colo(MigrationIncomingState *mis,
                                       Error **errp)
 {
-    int ret;
     if (migration_incoming_enable_colo(errp) < 0) {
         return -1;
     }
 
-    ret = colo_init_ram_cache();
-    if (ret < 0) {
-        error_setg(errp, "failed to init colo RAM cache: %d", ret);
+    if (colo_init_ram_cache(errp) < 0) {
         migration_incoming_disable_colo();
+        return -1;
     }
-    return ret;
+    return 0;
 }
 
 /*

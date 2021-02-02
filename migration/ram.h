@@ -74,7 +74,7 @@ int64_t ramblock_recv_bitmap_send(QEMUFile *file,
 int ram_dirty_bitmap_reload(MigrationState *s, RAMBlock *rb);
 
 /* ram cache */
-int colo_init_ram_cache(void);
+int colo_init_ram_cache(Error **errp);
 void colo_flush_ram_cache(void);
 void colo_release_ram_cache(void);
 void colo_incoming_start_dirty_log(void);
