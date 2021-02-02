@@ -3330,16 +3330,15 @@ static int postcopy_resume_handshake(MigrationState *s)
 static int postcopy_do_resume(MigrationState *s)
 {
     int ret;
+    Error *local_err = NULL;
 
     /*
      * Call all the resume_prepare() hooks, so that modules can be
      * ready for the migration resume.
      */
-    ret = qemu_savevm_state_resume_prepare(s);
-    if (ret) {
-        error_report("%s: resume_prepare() failure detected: %d",
-                     __func__, ret);
-        return ret;
+    if (qemu_savevm_state_resume_prepare(s, &local_err) < 0) {
+        error_report_err(local_err);
+        return -1;
     }
 
     /*

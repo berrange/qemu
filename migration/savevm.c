@@ -1230,7 +1230,7 @@ int qemu_savevm_state_setup(QEMUFile *f, Error **errp)
     return 0;
 }
 
-int qemu_savevm_state_resume_prepare(MigrationState *s)
+int qemu_savevm_state_resume_prepare(MigrationState *s, Error **errp)
 {
     SaveStateEntry *se;
     int ret;
@@ -1248,7 +1248,8 @@ int qemu_savevm_state_resume_prepare(MigrationState *s)
         }
         ret = se->ops->resume_prepare(s, se->opaque);
         if (ret < 0) {
-            return ret;
+            error_setg_errno(errp, -ret, "failed state resume prepare");
+            return -1;
         }
     }
 
