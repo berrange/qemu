@@ -1195,10 +1195,9 @@ bool qemu_savevm_state_guest_unplug_pending(void)
     return false;
 }
 
-void qemu_savevm_state_setup(QEMUFile *f)
+int qemu_savevm_state_setup(QEMUFile *f, Error **errp)
 {
     SaveStateEntry *se;
-    Error *local_err = NULL;
     int ret;
 
     trace_savevm_state_setup();
@@ -1216,14 +1215,18 @@ void qemu_savevm_state_setup(QEMUFile *f)
         ret = se->ops->save_setup(f, se->opaque);
         save_section_footer(f, se);
         if (ret < 0) {
+            error_setg_errno(errp, -ret,
+                             "Failed to setup device state handler");
             qemu_file_set_error(f, ret);
-            break;
+            return -1;
         }
     }
 
-    if (precopy_notify(PRECOPY_NOTIFY_SETUP, &local_err)) {
-        error_report_err(local_err);
+    if (precopy_notify(PRECOPY_NOTIFY_SETUP, errp)) {
+        return -1;
     }
+
+    return 0;
 }
 
 int qemu_savevm_state_resume_prepare(MigrationState *s)
@@ -1572,8 +1575,11 @@ static int qemu_savevm_state(QEMUFile *f, Error **errp)
 
     qemu_mutex_unlock_iothread();
     qemu_savevm_state_header(f);
-    qemu_savevm_state_setup(f);
+    ret = qemu_savevm_state_setup(f, errp);
     qemu_mutex_lock_iothread();
+    if (ret < 0) {
+        goto fail;
+    }
 
     while (1) {
         ret = qemu_savevm_state_iterate(f, false, errp);

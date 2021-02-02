@@ -3736,6 +3736,7 @@ static void *migration_thread(void *opaque)
     int64_t setup_start = qemu_clock_get_ms(QEMU_CLOCK_HOST);
     MigThrError thr_error;
     bool urgent = false;
+    Error *local_err = NULL;
 
     rcu_register_thread();
 
@@ -3770,7 +3771,12 @@ static void *migration_thread(void *opaque)
         qemu_savevm_send_colo_enable(s->to_dst_file);
     }
 
-    qemu_savevm_state_setup(s->to_dst_file);
+    if (qemu_savevm_state_setup(s->to_dst_file, &local_err) < 0) {
+        error_report_err(local_err);
+        migrate_set_state(&s->state, MIGRATION_STATUS_SETUP,
+                          MIGRATION_STATUS_FAILED);
+        goto out;
+    }
 
     if (qemu_savevm_state_guest_unplug_pending()) {
         migrate_set_state(&s->state, MIGRATION_STATUS_SETUP,
@@ -3823,6 +3829,7 @@ static void *migration_thread(void *opaque)
 
     trace_migration_thread_after_loop();
     migration_iteration_finish(s);
+ out:
     object_unref(OBJECT(s));
     rcu_unregister_thread();
     return NULL;
@@ -3886,7 +3893,10 @@ static void *bg_migration_thread(void *opaque)
     update_iteration_initial_status(s);
 
     qemu_savevm_state_header(s->to_dst_file);
-    qemu_savevm_state_setup(s->to_dst_file);
+    if (qemu_savevm_state_setup(s->to_dst_file, &local_err) < 0) {
+        error_report_err(local_err);
+        goto fail;
+    }
 
     if (qemu_savevm_state_guest_unplug_pending()) {
         migrate_set_state(&s->state, MIGRATION_STATUS_SETUP,
