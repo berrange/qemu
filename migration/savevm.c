@@ -2823,7 +2823,7 @@ bool save_snapshot(const char *name, bool overwrite, const char *vmstate,
 {
     BlockDriverState *bs;
     QEMUSnapshotInfo sn1, *sn = &sn1;
-    int ret = -1, ret2;
+    int ret = -1;
     QEMUFile *f;
     int saved_vm_running;
     uint64_t vm_state_size;
@@ -2853,11 +2853,11 @@ bool save_snapshot(const char *name, bool overwrite, const char *vmstate,
                 return false;
             }
         } else {
-            ret2 = bdrv_all_has_snapshot(name, has_devices, devices, errp);
-            if (ret2 < 0) {
+            ret = bdrv_all_has_snapshot(name, has_devices, devices, errp);
+            if (ret < 0) {
                 return false;
             }
-            if (ret2 == 1) {
+            if (ret == 1) {
                 error_setg(errp,
                            "Snapshot '%s' already exists in one or more devices",
                            name);
@@ -2909,13 +2909,14 @@ bool save_snapshot(const char *name, bool overwrite, const char *vmstate,
     f = qemu_fopen_bdrv(bs, 1);
 
     ret = qemu_savevm_state(f, errp);
-    vm_state_size = qemu_ftell(f);
-    ret2 = qemu_fclose(f);
     if (ret < 0) {
+        qemu_fclose(f);
         goto the_end;
     }
-    if (ret2 < 0) {
-        ret = ret2;
+    vm_state_size = qemu_ftell(f);
+    ret = qemu_fclose(f);
+    if (ret < 0) {
+        error_setg_errno(errp, -ret, "failed to close vmstate file");
         goto the_end;
     }
 
