@@ -211,6 +211,26 @@ type of array items in query-named-block-nodes.
 
 Specify the properties for the object as top-level arguments instead.
 
+``eject`` argument ``device`` (removed in 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''
+
+Use argument ``id`` instead.
+
+``blockdev-open-tray``, ``blockdev-close-tray`` argument ``device`` (removed in 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Use argument ``id`` instead.
+
+``blockdev-change-medium`` argument ``device`` (removed in 6.0)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Use argument ``id`` instead.
+
+``block_set_io_throttle`` argument ``device`` (removed in 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Use argument ``id`` instead.
+
 Human Monitor Protocol (HMP) commands
 -------------------------------------
 
@@ -248,6 +268,16 @@ Use ``migrate-set-parameters`` and ``info migrate-parameters`` instead.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Use ``migrate-set-parameters`` instead.
+
+``eject`` argument ``device`` (removed in 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''
+
+Use argument ``id`` instead.
+
+``block_set_io_throttle`` argument ``device`` (removed in 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Use argument ``id`` instead.
 
 Guest Emulator ISAs
 -------------------

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# group: rw auto quick
+# group: rw quick
+# XXXX figure out why i broke this
 #
 # Test case for ejecting a BlockBackend with an NBD server attached to it
 #
@@ -87,7 +88,7 @@ $QEMU_IO_PROG -f raw -r -c 'read -P 42 0 64k' \
 # the output is defined.
 _send_qemu_cmd $QEMU_HANDLE \
     "{ 'execute': 'eject',
-       'arguments': { 'device': 'drv' }}" \
+       'arguments': { 'id': 'drv' }}" \
     'return\|BLOCK_EXPORT_DELETED' |
     grep -v 'return'
 

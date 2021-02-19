@@ -38,59 +38,34 @@
 #include "sysemu/block-backend.h"
 #include "sysemu/blockdev.h"
 
-static BlockBackend *qmp_get_blk(const char *blk_name, const char *qdev_id,
-                                 Error **errp)
-{
-    BlockBackend *blk;
-
-    if (!blk_name == !qdev_id) {
-        error_setg(errp, "Need exactly one of 'device' and 'id'");
-        return NULL;
-    }
-
-    if (qdev_id) {
-        blk = blk_by_qdev_id(qdev_id, errp);
-    } else {
-        blk = blk_by_name(blk_name);
-        if (blk == NULL) {
-            error_set(errp, ERROR_CLASS_DEVICE_NOT_FOUND,
-                      "Device '%s' not found", blk_name);
-        }
-    }
-
-    return blk;
-}
-
 /*
- * Attempt to open the tray of @device.
+ * Attempt to open the tray of @qdev_id.
  * If @force, ignore its tray lock.
  * Else, if the tray is locked, don't open it, but ask the guest to open it.
  * On error, store an error through @errp and return -errno.
- * If @device does not exist, return -ENODEV.
+ * If @qdev_id does not exist, return -ENODEV.
  * If it has no removable media, return -ENOTSUP.
  * If it has no tray, return -ENOSYS.
  * If the guest was asked to open the tray, return -EINPROGRESS.
  * Else, return 0.
  */
-static int do_open_tray(const char *blk_name, const char *qdev_id,
-                        bool force, Error **errp)
+static int do_open_tray(const char *qdev_id, bool force, Error **errp)
 {
     BlockBackend *blk;
-    const char *device = qdev_id ?: blk_name;
     bool locked;
 
-    blk = qmp_get_blk(blk_name, qdev_id, errp);
+    blk = blk_by_qdev_id(qdev_id, errp);
     if (!blk) {
         return -ENODEV;
     }
 
     if (!blk_dev_has_removable_media(blk)) {
-        error_setg(errp, "Device '%s' is not removable", device);
+        error_setg(errp, "Device '%s' is not removable", qdev_id);
         return -ENOTSUP;
     }
 
     if (!blk_dev_has_tray(blk)) {
-        error_setg(errp, "Device '%s' does not have a tray", device);
+        error_setg(errp, "Device '%s' does not have a tray", qdev_id);
         return -ENOSYS;
     }
 
@@ -109,15 +84,14 @@ static int do_open_tray(const char *blk_name, const char *qdev_id,
 
     if (locked && !force) {
         error_setg(errp, "Device '%s' is locked and force was not specified, "
-                   "wait for tray to open and try again", device);
+                   "wait for tray to open and try again", qdev_id);
         return -EINPROGRESS;
     }
 
     return 0;
 }
 
-void qmp_blockdev_open_tray(bool has_device, const char *device,
-                            bool has_id, const char *id,
+void qmp_blockdev_open_tray(const char *id,
                             bool has_force, bool force,
                             Error **errp)
 {
@@ -127,9 +101,7 @@ void qmp_blockdev_open_tray(bool has_device, const char *device,
     if (!has_force) {
         force = false;
     }
-    rc = do_open_tray(has_device ? device : NULL,
-                      has_id ? id : NULL,
-                      force, &local_err);
+    rc = do_open_tray(id, force, &local_err);
     if (rc && rc != -ENOSYS && rc != -EINPROGRESS) {
         error_propagate(errp, local_err);
         return;
@@ -137,23 +109,19 @@ void qmp_blockdev_open_tray(bool has_device, const char *device,
     error_free(local_err);
 }
 
-void qmp_blockdev_close_tray(bool has_device, const char *device,
-                             bool has_id, const char *id,
+void qmp_blockdev_close_tray(const char *id,
                              Error **errp)
 {
     BlockBackend *blk;
     Error *local_err = NULL;
 
-    device = has_device ? device : NULL;
-    id = has_id ? id : NULL;
-
-    blk = qmp_get_blk(device, id, errp);
+    blk = blk_by_qdev_id(id, errp);
     if (!blk) {
         return;
     }
 
     if (!blk_dev_has_removable_media(blk)) {
-        error_setg(errp, "Device '%s' is not removable", device ?: id);
+        error_setg(errp, "Device '%s' is not removable", id);
         return;
     }
 
@@ -173,18 +141,14 @@ void qmp_blockdev_close_tray(bool has_device, const char *device,
     }
 }
 
-static void blockdev_remove_medium(bool has_device, const char *device,
-                                   bool has_id, const char *id, Error **errp)
+void qmp_blockdev_remove_medium(const char *id, Error **errp)
 {
     BlockBackend *blk;
     BlockDriverState *bs;
     AioContext *aio_context;
     bool has_attached_device;
 
-    device = has_device ? device : NULL;
-    id = has_id ? id : NULL;
-
-    blk = qmp_get_blk(device, id, errp);
+    blk = blk_by_qdev_id(id, errp);
     if (!blk) {
         return;
     }
@@ -193,14 +157,14 @@ static void blockdev_remove_medium(bool has_device, const char *device,
     has_attached_device = blk_get_attached_dev(blk);
 
     if (has_attached_device && !blk_dev_has_removable_media(blk)) {
-        error_setg(errp, "Device '%s' is not removable", device ?: id);
+        error_setg(errp, "Device '%s' is not removable", id);
         return;
     }
 
     if (has_attached_device && blk_dev_has_tray(blk) &&
         !blk_dev_is_tray_open(blk))
     {
-        error_setg(errp, "Tray of device '%s' is not open", device ?: id);
+        error_setg(errp, "Tray of device '%s' is not open", id);
         return;
     }
 
@@ -228,11 +192,6 @@ static void blockdev_remove_medium(bool has_device, const char *device,
 
 out:
     aio_context_release(aio_context);
-}
-
-void qmp_blockdev_remove_medium(const char *id, Error **errp)
-{
-    blockdev_remove_medium(false, NULL, true, id, errp);
 }
 
 static void qmp_blockdev_insert_anon_medium(BlockBackend *blk,
@@ -280,16 +239,13 @@ static void qmp_blockdev_insert_anon_medium(BlockBackend *blk,
     }
 }
 
-static void blockdev_insert_medium(bool has_device, const char *device,
-                                   bool has_id, const char *id,
-                                   const char *node_name, Error **errp)
+void qmp_blockdev_insert_medium(const char *id,
+                                const char *node_name, Error **errp)
 {
     BlockBackend *blk;
     BlockDriverState *bs;
 
-    blk = qmp_get_blk(has_device ? device : NULL,
-                      has_id ? id : NULL,
-                      errp);
+    blk = blk_by_qdev_id(id, errp);
     if (!blk) {
         return;
     }
@@ -308,14 +264,7 @@ static void blockdev_insert_medium(bool has_device, const char *device,
     qmp_blockdev_insert_anon_medium(blk, bs, errp);
 }
 
-void qmp_blockdev_insert_medium(const char *id, const char *node_name,
-                                Error **errp)
-{
-    blockdev_insert_medium(false, NULL, true, id, node_name, errp);
-}
-
-void qmp_blockdev_change_medium(bool has_device, const char *device,
-                                bool has_id, const char *id,
+void qmp_blockdev_change_medium(const char *id,
                                 const char *filename,
                                 bool has_format, const char *format,
                                 bool has_read_only,
@@ -330,9 +279,7 @@ void qmp_blockdev_change_medium(bool has_device, const char *device,
     QDict *options = NULL;
     Error *err = NULL;
 
-    blk = qmp_get_blk(has_device ? device : NULL,
-                      has_id ? id : NULL,
-                      errp);
+    blk = blk_by_qdev_id(id, errp);
     if (!blk) {
         goto fail;
     }
@@ -378,9 +325,7 @@ void qmp_blockdev_change_medium(bool has_device, const char *device,
         goto fail;
     }
 
-    rc = do_open_tray(has_device ? device : NULL,
-                      has_id ? id : NULL,
-                      false, &err);
+    rc = do_open_tray(id, false, &err);
     if (rc && rc != -ENOSYS) {
         error_propagate(errp, err);
         goto fail;
@@ -388,7 +333,7 @@ void qmp_blockdev_change_medium(bool has_device, const char *device,
     error_free(err);
     err = NULL;
 
-    blockdev_remove_medium(has_device, device, has_id, id, &err);
+    qmp_blockdev_remove_medium(id, &err);
     if (err) {
         error_propagate(errp, err);
         goto fail;
@@ -400,7 +345,7 @@ void qmp_blockdev_change_medium(bool has_device, const char *device,
         goto fail;
     }
 
-    qmp_blockdev_close_tray(has_device, device, has_id, id, errp);
+    qmp_blockdev_close_tray(id, errp);
 
 fail:
     /* If the medium has been inserted, the device has its own reference, so
@@ -409,8 +354,7 @@ fail:
     bdrv_unref(medium_bs);
 }
 
-void qmp_eject(bool has_device, const char *device,
-               bool has_id, const char *id,
+void qmp_eject(const char *id,
                bool has_force, bool force, Error **errp)
 {
     Error *local_err = NULL;
@@ -420,16 +364,14 @@ void qmp_eject(bool has_device, const char *device,
         force = false;
     }
 
-    rc = do_open_tray(has_device ? device : NULL,
-                      has_id ? id : NULL,
-                      force, &local_err);
+    rc = do_open_tray(id, force, &local_err);
     if (rc && rc != -ENOSYS) {
         error_propagate(errp, local_err);
         return;
     }
     error_free(local_err);
 
-    blockdev_remove_medium(has_device, device, has_id, id, errp);
+    qmp_blockdev_remove_medium(id, errp);
 }
 
 /* throttling disk I/O limits */
@@ -440,9 +382,7 @@ void qmp_block_set_io_throttle(BlockIOThrottle *arg, Error **errp)
     BlockBackend *blk;
     AioContext *aio_context;
 
-    blk = qmp_get_blk(arg->has_device ? arg->device : NULL,
-                      arg->has_id ? arg->id : NULL,
-                      errp);
+    blk = blk_by_qdev_id(arg->id, errp);
     if (!blk) {
         return;
     }
@@ -517,7 +457,6 @@ void qmp_block_set_io_throttle(BlockIOThrottle *arg, Error **errp)
         if (!blk_get_public(blk)->throttle_group_member.throttle_state) {
             blk_io_limits_enable(blk,
                                  arg->has_group ? arg->group :
-                                 arg->has_device ? arg->device :
                                  arg->id);
         } else if (arg->has_group) {
             blk_io_limits_update_group(blk, arg->group);
@@ -541,7 +480,7 @@ void qmp_block_latency_histogram_set(
     bool has_boundaries_flush, uint64List *boundaries_flush,
     Error **errp)
 {
-    BlockBackend *blk = qmp_get_blk(NULL, id, errp);
+    BlockBackend *blk = blk_by_qdev_id(id, errp);
     BlockAcctStats *stats;
     int ret;
 

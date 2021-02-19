@@ -1476,7 +1476,7 @@ static void hmp_change_read_arg(void *opaque, const char *password,
 
 void hmp_change(Monitor *mon, const QDict *qdict)
 {
-    const char *device = qdict_get_str(qdict, "device");
+    const char *id = qdict_get_str(qdict, "id");
     const char *target = qdict_get_str(qdict, "target");
     const char *arg = qdict_get_try_str(qdict, "arg");
     const char *read_only = qdict_get_try_str(qdict, "read-only-mode");
@@ -1484,7 +1484,7 @@ void hmp_change(Monitor *mon, const QDict *qdict)
     Error *err = NULL;
 
 #ifdef CONFIG_VNC
-    if (strcmp(device, "vnc") == 0) {
+    if (strcmp(id, "vnc") == 0) {
         if (read_only) {
             monitor_printf(mon,
                            "Parameter 'read-only-mode' is invalid for VNC\n");
@@ -1515,7 +1515,7 @@ void hmp_change(Monitor *mon, const QDict *qdict)
             }
         }
 
-        qmp_blockdev_change_medium(true, device, false, NULL, target,
+        qmp_blockdev_change_medium(id, target,
                                    !!arg, arg, !!read_only, read_only_mode,
                                    &err);
     }

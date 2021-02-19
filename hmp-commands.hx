@@ -171,7 +171,7 @@ ERST
 
     {
         .name       = "eject",
-        .args_type  = "force:-f,device:B",
+        .args_type  = "force:-f,id:B",
         .params     = "[-f] device",
         .help       = "eject a removable medium (use -f to force it)",
         .cmd        = hmp_eject,
@@ -202,8 +202,8 @@ ERST
 
     {
         .name       = "change",
-        .args_type  = "device:B,target:F,arg:s?,read-only-mode:s?",
-        .params     = "device filename [format [read-only-mode]]",
+        .args_type  = "id:B,target:F,arg:s?,read-only-mode:s?",
+        .params     = "id filename [format [read-only-mode]]",
         .help       = "change a removable medium, optional format",
         .cmd        = hmp_change,
     },

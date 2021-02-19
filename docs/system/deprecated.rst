@@ -149,26 +149,6 @@ specified.
 QEMU Machine Protocol (QMP) commands
 ------------------------------------
 
-``blockdev-open-tray``, ``blockdev-close-tray`` argument ``device`` (since 2.8.0)
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Use argument ``id`` instead.
-
-``eject`` argument ``device`` (since 2.8.0)
-'''''''''''''''''''''''''''''''''''''''''''
-
-Use argument ``id`` instead.
-
-``blockdev-change-medium`` argument ``device`` (since 2.8.0)
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Use argument ``id`` instead.
-
-``block_set_io_throttle`` argument ``device`` (since 2.8.0)
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Use argument ``id`` instead.
-
 ``blockdev-add`` empty string argument ``backing`` (since 2.10.0)
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 

@@ -518,7 +518,7 @@ void hmp_block_stream(Monitor *mon, const QDict *qdict)
 void hmp_block_set_io_throttle(Monitor *mon, const QDict *qdict)
 {
     Error *err = NULL;
-    char *device = (char *) qdict_get_str(qdict, "device");
+    char *id = (char *) qdict_get_str(qdict, "id");
     BlockIOThrottle throttle = {
         .bps = qdict_get_int(qdict, "bps"),
         .bps_rd = qdict_get_int(qdict, "bps_rd"),
@@ -526,20 +526,8 @@ void hmp_block_set_io_throttle(Monitor *mon, const QDict *qdict)
         .iops = qdict_get_int(qdict, "iops"),
         .iops_rd = qdict_get_int(qdict, "iops_rd"),
         .iops_wr = qdict_get_int(qdict, "iops_wr"),
+        .id = id,
     };
-
-    /*
-     * qmp_block_set_io_throttle has separate parameters for the
-     * (deprecated) block device name and the qdev ID but the HMP
-     * version has only one, so we must decide which one to pass.
-     */
-    if (blk_by_name(device)) {
-        throttle.has_device = true;
-        throttle.device = device;
-    } else {
-        throttle.has_id = true;
-        throttle.id = device;
-    }
 
     qmp_block_set_io_throttle(&throttle, &err);
     hmp_handle_error(mon, err);
@@ -548,10 +536,10 @@ void hmp_block_set_io_throttle(Monitor *mon, const QDict *qdict)
 void hmp_eject(Monitor *mon, const QDict *qdict)
 {
     bool force = qdict_get_try_bool(qdict, "force", false);
-    const char *device = qdict_get_str(qdict, "device");
+    const char *id = qdict_get_str(qdict, "id");
     Error *err = NULL;
 
-    qmp_eject(true, device, false, NULL, true, force, &err);
+    qmp_eject(id, true, force, &err);
     hmp_handle_error(mon, err);
 }
 
