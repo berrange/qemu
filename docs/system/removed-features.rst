@@ -236,6 +236,11 @@ Use argument ``id`` instead.
 
 Use argument value ``null`` instead.
 
+``block-commit`` arguments ``base`` and ``top`` (removed in 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Use arguments ``base-node`` and ``top-node`` instead.
+
 Human Monitor Protocol (HMP) commands
 -------------------------------------
 

@@ -2611,9 +2611,7 @@ out:
 
 void qmp_block_commit(bool has_job_id, const char *job_id, const char *device,
                       bool has_base_node, const char *base_node,
-                      bool has_base, const char *base,
                       bool has_top_node, const char *top_node,
-                      bool has_top, const char *top,
                       bool has_backing_file, const char *backing_file,
                       bool has_speed, int64_t speed,
                       bool has_on_error, BlockdevOnError on_error,
@@ -2674,10 +2672,7 @@ void qmp_block_commit(bool has_job_id, const char *job_id, const char *device,
     /* default top_bs is the active layer */
     top_bs = bs;
 
-    if (has_top_node && has_top) {
-        error_setg(errp, "'top-node' and 'top' are mutually exclusive");
-        goto out;
-    } else if (has_top_node) {
+    if (has_top_node) {
         top_bs = bdrv_lookup_bs(NULL, top_node, errp);
         if (top_bs == NULL) {
             goto out;
@@ -2687,27 +2682,16 @@ void qmp_block_commit(bool has_job_id, const char *job_id, const char *device,
                        top_node);
             goto out;
         }
-    } else if (has_top && top) {
-        /* This strcmp() is just a shortcut, there is no need to
-         * refresh @bs's filename.  If it mismatches,
-         * bdrv_find_backing_image() will do the refresh and may still
-         * return @bs. */
-        if (strcmp(bs->filename, top) != 0) {
-            top_bs = bdrv_find_backing_image(bs, top);
-        }
     }
 
     if (top_bs == NULL) {
-        error_setg(errp, "Top image file %s not found", top ? top : "NULL");
+        error_setg(errp, "Top image node %s not found", top_node ? top_node : "NULL");
         goto out;
     }
 
     assert(bdrv_get_aio_context(top_bs) == aio_context);
 
-    if (has_base_node && has_base) {
-        error_setg(errp, "'base-node' and 'base' are mutually exclusive");
-        goto out;
-    } else if (has_base_node) {
+    if (has_base_node) {
         base_bs = bdrv_lookup_bs(NULL, base_node, errp);
         if (base_bs == NULL) {
             goto out;
@@ -2715,12 +2699,6 @@ void qmp_block_commit(bool has_job_id, const char *job_id, const char *device,
         if (!bdrv_chain_contains(top_bs, base_bs)) {
             error_setg(errp, "'%s' is not in this backing file chain",
                        base_node);
-            goto out;
-        }
-    } else if (has_base && base) {
-        base_bs = bdrv_find_backing_image(top_bs, base);
-        if (base_bs == NULL) {
-            error_setg(errp, "Can't find '%s' in the backing chain", base);
             goto out;
         }
     } else {

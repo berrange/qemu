@@ -1550,19 +1550,9 @@
 #             If not specified, this is the deepest backing image.
 #             (since: 3.1)
 #
-# @base: Same as @base-node, except that it is a file name rather than a node
-#        name. This must be the exact filename string that was used to open the
-#        node; other strings, even if addressing the same file, are not
-#        accepted
-#
 # @top-node: The node name of the backing image within the image chain
 #            which contains the topmost data to be committed down. If
 #            not specified, this is the active layer. (since: 3.1)
-#
-# @top: Same as @top-node, except that it is a file name rather than a node
-#       name. This must be the exact filename string that was used to open the
-#       node; other strings, even if addressing the same file, are not
-#       accepted
 #
 # @backing-file: The backing file string to write into the overlay
 #                image of 'top'.  If 'top' does not have an overlay
@@ -1605,10 +1595,6 @@
 #                list without user intervention.
 #                Defaults to true. (Since 3.1)
 #
-# Features:
-# @deprecated: Members @base and @top are deprecated.  Use @base-node
-#              and @top-node instead.
-#
 # Returns: - Nothing on success
 #          - If @device does not exist, DeviceNotFound
 #          - Any other error returns a GenericError.
@@ -1625,9 +1611,7 @@
 ##
 { 'command': 'block-commit',
   'data': { '*job-id': 'str', 'device': 'str', '*base-node': 'str',
-            '*base': { 'type': 'str', 'features': [ 'deprecated' ] },
             '*top-node': 'str',
-            '*top': { 'type': 'str', 'features': [ 'deprecated' ] },
             '*backing-file': 'str', '*speed': 'int',
             '*on-error': 'BlockdevOnError',
             '*filter-node-name': 'str',
