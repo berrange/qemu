@@ -231,6 +231,11 @@ Use argument ``id`` instead.
 
 Use argument ``id`` instead.
 
+``blockdev-add`` empty string argument ``backing`` (removed in 6.0)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Use argument value ``null`` instead.
+
 Human Monitor Protocol (HMP) commands
 -------------------------------------
 
@@ -491,3 +496,15 @@ VXHS backend (removed in 5.1)
 '''''''''''''''''''''''''''''
 
 The VXHS code did not compile since v2.12.0. It was removed in 5.1.
+
+Device options
+--------------
+
+Block device options
+''''''''''''''''''''
+
+``"backing": ""`` (removed in 6.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In order to prevent QEMU from automatically opening an image's backing
+chain, use ``"backing": null`` instead.

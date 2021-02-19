@@ -149,11 +149,6 @@ specified.
 QEMU Machine Protocol (QMP) commands
 ------------------------------------
 
-``blockdev-add`` empty string argument ``backing`` (since 2.10.0)
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Use argument value ``null`` instead.
-
 ``block-commit`` arguments ``base`` and ``top`` (since 3.1.0)
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -243,12 +238,6 @@ alias.
 
 Block device options
 ''''''''''''''''''''
-
-``"backing": ""`` (since 2.12.0)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-In order to prevent QEMU from automatically opening an image's backing
-chain, use ``"backing": null`` instead.
 
 ``rbd`` keyvalue pair encoded filenames: ``""`` (since 3.1.0)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

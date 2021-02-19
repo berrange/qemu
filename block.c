@@ -3259,7 +3259,6 @@ static BlockDriverState *bdrv_open_inherit(const char *filename,
     BlockDriver *drv = NULL;
     BdrvChild *child;
     const char *drvname;
-    const char *backing;
     Error *local_err = NULL;
     QDict *snapshot_options = NULL;
     int snapshot_flags = 0;
@@ -3368,14 +3367,8 @@ static BlockDriverState *bdrv_open_inherit(const char *filename,
     assert(drvname || !(flags & BDRV_O_PROTOCOL));
 
     /* See cautionary note on accessing @options above */
-    backing = qdict_get_try_str(options, "backing");
-    if (qobject_to(QNull, qdict_get(options, "backing")) != NULL ||
-        (backing && *backing == '\0'))
+    if (qobject_to(QNull, qdict_get(options, "backing")) != NULL)
     {
-        if (backing) {
-            warn_report("Use of \"backing\": \"\" is deprecated; "
-                        "use \"backing\": null instead");
-        }
         flags |= BDRV_O_NO_BACKING;
         qdict_del(bs->explicit_options, "backing");
         qdict_del(bs->options, "backing");

@@ -4062,8 +4062,6 @@
 #
 # @definition: defines a new block device inline
 # @reference: references the ID of an existing block device.
-#             An empty string means that no block device should
-#             be referenced.  Deprecated; use null instead.
 # @null: No block device should be referenced (since 2.10)
 #
 # Since: 2.9
