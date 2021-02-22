@@ -239,22 +239,6 @@ alias.
 Block device options
 ''''''''''''''''''''
 
-``rbd`` keyvalue pair encoded filenames: ``""`` (since 3.1.0)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Options for ``rbd`` should be specified according to its runtime options,
-like other block drivers.  Legacy parsing of keyvalue pair encoded
-filenames is useful to open images with the old format for backing files;
-These image files should be updated to use the current format.
-
-Example of legacy encoding::
-
-  json:{"file.driver":"rbd", "file.filename":"rbd:rbd/name"}
-
-The above, converted to the current supported format::
-
-  json:{"file.driver":"rbd", "file.pool":"rbd", "file.image":"name"}
-
 ``sheepdog`` driver (since 5.2.0)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
