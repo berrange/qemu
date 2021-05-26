@@ -45,6 +45,10 @@ if [ -z "$LOCAL_PYTHON" ]; then
 fi
 echo "Using $LOCAL_PYTHON"
 
+if [ -n "$LOCALVERSION" ]; then
+  LOCALVERSION=.${LOCALVERSION}
+fi
+
 # Pre-cleaning
 rm -rf .tmp psection patchlist
 
@@ -63,7 +67,7 @@ if [ -n "${RCVERSION}" ]; then
 fi
 
 # Handle patches
-git format-patch --first-parent --no-renames -k --no-binary --ignore-submodules ${MARKER}.. > patchlist
+git format-patch --first-parent --no-cover-letter --no-renames -k --no-binary --ignore-submodules ${MARKER}.. > patchlist
 for patchfile in `cat patchlist`; do
   ${LOCAL_PYTHON} ${SCRIPTS}/frh.py ${patchfile} > .tmp
   if grep -q '^diff --git ' .tmp; then

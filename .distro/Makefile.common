@@ -1,0 +1,42 @@
+UNAME:=qemu
+NAME:=qemu-kvm
+VERSION:=9.0.50
+DATE:=
+COMMIT:=
+RELEASE:=5
+ZRELEASE:=
+RELEASE_SEPARATOR:=-
+WEEKLY_DATE:=20240626
+RC:=
+CLANG:=1
+BUILD_TARGET=rhel-9.5.0-candidate
+
+ifneq ($(RC),)
+  TARFILE:=qemu-$(VERSION)-$(RC).tar.xz
+else
+  TARFILE:=qemu-$(VERSION).tar.xz
+endif
+TARSHA512:=e4ff31aa095809a12caae6fc4301eb025e58511b639200d75691607deeb7d3ef22f4b208545a87f4f680704d1ae0812c3900f3aa105a1d4c5502e694be6f7b2e
+MARKER:=3f044554b94fc0756d5b3cdbf84501e0eea0e629
+#TARURL:=https://pkgs.devel.redhat.com/repo/rpms/qemu-kvm/$(TARFILE)/sha512/$(TARSHA512)/$(TARFILE)
+TARURL:=http://batcave.lab.eng.brq2.redhat.com/www/qemu/weekly/${WEEKLY_DATE}/$(TARFILE)
+#TARURL:=http://batcave.lab.eng.brq2.redhat.com/www/qemu/weekly/$(TARFILE)
+#TARURL=https://download.qemu.org/$(TARFILE)
+#TARURL=https://sources.stream.centos.org/sources/rpms/qemu-kvm/$(TARFILE)/sha512/$(TARSHA512)/$(TARFILE)
+
+SPECFILE:=$(NAME).spec
+DIST:=.el9
+SRPM_NAME=$(shell rpmspec --query --srpm --target="src" --define "dist $(DIST)" $(RPMBUILD)/SPECS/$(SPECFILE) | sed -e 's/\(.*\)\..*/\1/').src.rpm
+
+SOURCES_FILELIST:=                     \
+       99-qemu-guest-agent.rules       \
+       qemu-guest-agent.service        \
+       qemu-ga.sysconfig               \
+       modules-load.conf               \
+       vhost.conf                      \
+       bridge.conf                     \
+       kvm.conf                        \
+       kvm-x86.conf                    \
+       kvm-s390x.conf                  \
+       95-kvm-memlock.conf             \
+       README.tests

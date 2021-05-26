@@ -12,7 +12,6 @@ ExecStart=/usr/bin/qemu-ga \
   --path=/dev/virtio-ports/org.qemu.guest_agent.0 \
   ${FILTER_RPC_ARGS} \
   -F${FSFREEZE_HOOK_PATHNAME}
-StandardError=syslog
 Restart=always
 RestartSec=0
 
