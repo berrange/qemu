@@ -12,6 +12,7 @@ def extract_build_info(strlines):
     State 3: last line (without slash) of ./configure call was found
     State 4: empty line was found and all build information was complete
     State 5: Something went wrong and next section was found without finishing
+    State 6: Parameter expansions line was found
     """
     state = 0
 
@@ -19,6 +20,8 @@ def extract_build_info(strlines):
     configure_start = re.compile("^\s*\.\./configure\s+\\\\\n$")
     configure_consume = re.compile("^\s+.*\\\\\n$")
     configure_consume_last = re.compile("^\s+.*\n$")
+    configure_consume_param = re.compile("^\s+.*\"\$@\"")
+    configure_start_run_configure = re.compile("^\s*run_configure\s+\\\\\n$")
     configure_end = re.compile("^\n")
 
     build_line = []
@@ -43,8 +46,12 @@ def extract_build_info(strlines):
             if configure_consume.match(line):
                 if line.strip()[:-1]:
                     build_line.append(line.strip()[:-1])
+            elif configure_consume_param.match(line):
+                state = 6
             elif configure_consume_last.match(line):
                 build_line.append(line.strip())
+                state = 3
+            elif configure_end.match(line):
                 state = 3
             else:
                 state = 5
@@ -55,6 +62,11 @@ def extract_build_info(strlines):
                 state = 4
             else:
                 state = 5
+
+        #  Found run_configure calling line
+        elif state == 6:
+            if configure_start_run_configure.match(line):
+                state = 2
 
         # states 4 or 5 ends the script
         else:
