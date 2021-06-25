@@ -27,7 +27,7 @@ elif crypto_backend == 'gcrypt'
   crypto_ss.add(gcrypt, files('hash-gcrypt.c', 'hmac-gcrypt.c', 'pbkdf-gcrypt.c'))
   util_ss.add(gcrypt, files('random-gcrypt.c'))
 elif crypto_backend == 'gnutls'
-  crypto_ss.add(gnutls, files('hash-gnutls.c', 'hmac-glib.c', 'pbkdf-stub.c')
+  crypto_ss.add(gnutls, files('hash-gnutls.c', 'hmac-gnutls.c', 'pbkdf-stub.c'))
   util_ss.add(gnutls, 'random-gnutls.c'))
 elif crypto_backend == 'builtin'
   crypto_ss.add(files('hash-glib.c', 'hmac-glib.c', 'pbkdf-stub.c'))
