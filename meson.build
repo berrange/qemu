@@ -864,7 +864,6 @@ if crypto_backend == 'gnutls'
   if not gnutls_backend_possible
     error('gnutls cryptography backend requested, but library is too old')
   endif
-  xts = 'private'
 endif
 
 # gcrypt is first preference, principally due to the
