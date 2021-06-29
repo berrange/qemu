@@ -27,7 +27,7 @@ elif gcrypt.found()
   crypto_ss.add(gcrypt, files('hash-gcrypt.c', 'hmac-gcrypt.c', 'pbkdf-gcrypt.c'))
 else
   crypto_ss.add(files('hash-glib.c', 'hmac-glib.c', 'pbkdf-stub.c'))
-  crypto_ss.add('des.c')
+  crypto_ss.add(files('des.c'))
 endif
 if xts == 'private'
   crypto_ss.add(files('xts.c'))

@@ -265,20 +265,20 @@ static const struct QCryptoCipherDriver qcrypto_cipher_aes_driver_xts = {
 };
 
 
-typedef struct QCryptoCipherBuiltinDESRFB QCryptoCipherBuiltinDESRFB;
-struct QCryptoCipherBuiltinDESRFB {
+typedef struct QCryptoCipherBuiltinDES QCryptoCipherBuiltinDES;
+struct QCryptoCipherBuiltinDES {
     QCryptoCipher base;
 
-    /* C.f. alg_key_len[QCRYPTO_CIPHER_ALG_DES_RFB] */
+    /* C.f. alg_key_len[QCRYPTO_CIPHER_ALG_DES] */
     uint8_t key[8];
 };
 
-static int qcrypto_cipher_encrypt_des_rfb(QCryptoCipher *cipher,
-                                          const void *in, void *out,
-                                          size_t len, Error **errp)
+static int qcrypto_cipher_encrypt_des(QCryptoCipher *cipher,
+                                      const void *in, void *out,
+                                      size_t len, Error **errp)
 {
-    QCryptoCipherBuiltinDESRFB *ctx
-        = container_of(cipher, QCryptoCipherBuiltinDESRFB, base);
+    QCryptoCipherBuiltinDES *ctx
+        = container_of(cipher, QCryptoCipherBuiltinDES, base);
     size_t i;
 
     if (!qcrypto_length_check(len, 8, errp)) {
@@ -294,12 +294,12 @@ static int qcrypto_cipher_encrypt_des_rfb(QCryptoCipher *cipher,
     return 0;
 }
 
-static int qcrypto_cipher_decrypt_des_rfb(QCryptoCipher *cipher,
-                                          const void *in, void *out,
-                                          size_t len, Error **errp)
+static int qcrypto_cipher_decrypt_des(QCryptoCipher *cipher,
+                                      const void *in, void *out,
+                                      size_t len, Error **errp)
 {
-    QCryptoCipherBuiltinDESRFB *ctx
-        = container_of(cipher, QCryptoCipherBuiltinDESRFB, base);
+    QCryptoCipherBuiltinDES *ctx
+        = container_of(cipher, QCryptoCipherBuiltinDES, base);
     size_t i;
 
     if (!qcrypto_length_check(len, 8, errp)) {
@@ -315,9 +315,9 @@ static int qcrypto_cipher_decrypt_des_rfb(QCryptoCipher *cipher,
     return 0;
 }
 
-static const struct QCryptoCipherDriver qcrypto_cipher_des_rfb_driver = {
-    .cipher_encrypt = qcrypto_cipher_encrypt_des_rfb,
-    .cipher_decrypt = qcrypto_cipher_decrypt_des_rfb,
+static const struct QCryptoCipherDriver qcrypto_cipher_des_driver = {
+    .cipher_encrypt = qcrypto_cipher_encrypt_des,
+    .cipher_decrypt = qcrypto_cipher_decrypt_des,
     .cipher_setiv = qcrypto_cipher_no_setiv,
     .cipher_free = qcrypto_cipher_ctx_free,
 };
@@ -326,7 +326,7 @@ bool qcrypto_cipher_supports(QCryptoCipherAlgorithm alg,
                              QCryptoCipherMode mode)
 {
     switch (alg) {
-    case QCRYPTO_CIPHER_ALG_DES_RFB:
+    case QCRYPTO_CIPHER_ALG_DES:
         return mode == QCRYPTO_CIPHER_MODE_ECB;
     case QCRYPTO_CIPHER_ALG_AES_128:
     case QCRYPTO_CIPHER_ALG_AES_192:
@@ -356,14 +356,13 @@ static QCryptoCipher *qcrypto_cipher_ctx_new(QCryptoCipherAlgorithm alg,
     }
 
     switch (alg) {
-    case QCRYPTO_CIPHER_ALG_DES_RFB:
+    case QCRYPTO_CIPHER_ALG_DES:
         if (mode == QCRYPTO_CIPHER_MODE_ECB) {
-            QCryptoCipherBuiltinDESRFB *ctx;
-            g_autofree uint8_t *rfbkey = qcrypto_cipher_munge_des_rfb_key(key, nkey);
+            QCryptoCipherBuiltinDES *ctx;
 
-            ctx = g_new0(QCryptoCipherBuiltinDESRFB, 1);
-            ctx->base.driver = &qcrypto_cipher_des_rfb_driver;
-            memcpy(ctx->key, rfbkey, sizeof(ctx->key));
+            ctx = g_new0(QCryptoCipherBuiltinDES, 1);
+            ctx->base.driver = &qcrypto_cipher_des_driver;
+            memcpy(ctx->key, key, sizeof(ctx->key));
 
             return &ctx->base;
         }
