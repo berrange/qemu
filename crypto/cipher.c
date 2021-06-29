@@ -132,7 +132,6 @@ qcrypto_cipher_validate_key_length(QCryptoCipherAlgorithm alg,
     return true;
 }
 
-#if defined(CONFIG_GCRYPT) || defined(CONFIG_NETTLE)
 static uint8_t *
 qcrypto_cipher_munge_des_rfb_key(const uint8_t *key,
                                  size_t nkey)
@@ -148,7 +147,6 @@ qcrypto_cipher_munge_des_rfb_key(const uint8_t *key,
     }
     return ret;
 }
-#endif /* CONFIG_GCRYPT || CONFIG_NETTLE */
 
 #ifdef CONFIG_GCRYPT
 #include "cipher-gcrypt.c.inc"

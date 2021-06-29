@@ -1,4 +1,9 @@
 /*
+ * Modified again by QEMU to turn it back into normal single-DES by
+ * re-reversing the bytebit[] array.
+ */
+
+/*
  * This is D3DES (V5.09) by Richard Outerbridge with the double and
  * triple-length support removed for use in VNC.  Also the bytebit[] array
  * has been reversed so that the most significant bit in each byte of the
@@ -37,7 +42,7 @@ static void cookey(unsigned long *);
 static unsigned long KnL[32] = { 0L };
 
 static const unsigned short bytebit[8]	= {
-        01, 02, 04, 010, 020, 040, 0100, 0200 };
+        0200, 0100, 040, 020, 010, 04, 02, 01 };
 
 static const unsigned long bigbyte[24] = {
         0x800000L,	0x400000L,	0x200000L,	0x100000L,

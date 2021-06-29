@@ -359,10 +359,11 @@ static QCryptoCipher *qcrypto_cipher_ctx_new(QCryptoCipherAlgorithm alg,
     case QCRYPTO_CIPHER_ALG_DES_RFB:
         if (mode == QCRYPTO_CIPHER_MODE_ECB) {
             QCryptoCipherBuiltinDESRFB *ctx;
+            g_autofree uint8_t *rfbkey = qcrypto_cipher_munge_des_rfb_key(key, nkey);
 
             ctx = g_new0(QCryptoCipherBuiltinDESRFB, 1);
             ctx->base.driver = &qcrypto_cipher_des_rfb_driver;
-            memcpy(ctx->key, key, sizeof(ctx->key));
+            memcpy(ctx->key, rfbkey, sizeof(ctx->key));
 
             return &ctx->base;
         }
