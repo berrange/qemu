@@ -295,7 +295,7 @@ struct VncState
 
     int auth;
     int subauth; /* Used by VeNCrypt */
-    char challenge[VNC_AUTH_CHALLENGE_SIZE];
+    uint8_t challenge[VNC_AUTH_CHALLENGE_SIZE];
     QCryptoTLSSession *tls; /* Borrowed pointer from channel, don't free */
 #ifdef CONFIG_VNC_SASL
     VncStateSASL sasl;

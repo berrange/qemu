@@ -2746,14 +2746,102 @@ vnc_munge_des_rfb_key(unsigned char *key, size_t nkey)
     }
 }
 
+
+static int
+vnc_challenge_encrypt_alg(VncState *vs,
+                          QCryptoCipherAlgorithm alg,
+                          QCryptoCipherMode mode,
+                          uint8_t *key, size_t keylen,
+                          uint8_t *plaintext, uint8_t *ciphertext,
+                          size_t datalen)
+{
+    int ret = -1;
+    Error *err = NULL;
+    QCryptoCipher *cipher = qcrypto_cipher_new(alg, mode,
+                                               key, keylen,
+                                               &err);
+    if (!cipher) {
+        trace_vnc_auth_fail(vs, vs->auth, "cannot create cipher",
+                            error_get_pretty(err));
+        goto error;
+    }
+
+    if (mode == QCRYPTO_CIPHER_MODE_CBC) {
+        uint8_t iv[8];
+        memset(iv, 0, sizeof(iv));
+        if (qcrypto_cipher_setiv(cipher, iv, sizeof(iv), &err) < 0)  {
+            trace_vnc_auth_fail(vs, vs->auth, "cannot set iv",
+                                error_get_pretty(err));
+            goto error;
+        }
+    }
+
+    if (qcrypto_cipher_encrypt(cipher,
+                               plaintext,
+                               ciphertext,
+                               datalen,
+                               &err) < 0) {
+        trace_vnc_auth_fail(vs, vs->auth, "cannot encrypt challenge response",
+                            error_get_pretty(err));
+        goto error;
+    }
+
+    ret = 0;
+ error:
+    error_free(err);
+    qcrypto_cipher_free(cipher);
+    return ret;
+}
+
+static int
+vnc_challenge_encrypt(VncState *vs, uint8_t *response)
+{
+    unsigned char key[8];
+    size_t pwlen = strlen(vs->vd->password);
+    size_t i;
+
+    for (i = 0; i < sizeof(key); i++)
+        key[i] = i < pwlen ? vs->vd->password[i] : 0;
+
+    vnc_munge_des_rfb_key(key, sizeof(key));
+
+    if (qcrypto_cipher_supports(
+            QCRYPTO_CIPHER_ALG_DES,
+            QCRYPTO_CIPHER_MODE_ECB)) {
+        if (vnc_challenge_encrypt_alg(vs,
+                                      QCRYPTO_CIPHER_ALG_DES,
+                                      QCRYPTO_CIPHER_MODE_ECB,
+                                      key, sizeof(key),
+                                      vs->challenge,
+                                      response,
+                                      VNC_AUTH_CHALLENGE_SIZE) < 0)
+            return -1;
+    } else {
+        if (vnc_challenge_encrypt_alg(vs,
+                                      QCRYPTO_CIPHER_ALG_DES,
+                                      QCRYPTO_CIPHER_MODE_CBC,
+                                      key, sizeof(key),
+                                      vs->challenge,
+                                      response,
+                                      VNC_AUTH_CHALLENGE_SIZE / 2) < 0)
+            return -1;
+        if (vnc_challenge_encrypt_alg(vs,
+                                      QCRYPTO_CIPHER_ALG_DES,
+                                      QCRYPTO_CIPHER_MODE_CBC,
+                                      key, sizeof(key),
+                                      vs->challenge + (VNC_AUTH_CHALLENGE_SIZE / 2),
+                                      response + (VNC_AUTH_CHALLENGE_SIZE / 2),
+                                      VNC_AUTH_CHALLENGE_SIZE / 2) < 0)
+            return -1;
+    }
+
+    return 0;
+}
+
 static int protocol_client_auth_vnc(VncState *vs, uint8_t *data, size_t len)
 {
     unsigned char response[VNC_AUTH_CHALLENGE_SIZE];
-    size_t i, pwlen;
-    unsigned char key[8];
     time_t now = time(NULL);
-    QCryptoCipher *cipher = NULL;
-    Error *err = NULL;
 
     if (!vs->vd->password) {
         trace_vnc_auth_fail(vs, vs->auth, "password is not set", "");
@@ -2764,34 +2852,8 @@ static int protocol_client_auth_vnc(VncState *vs, uint8_t *data, size_t len)
         goto reject;
     }
 
-    memcpy(response, vs->challenge, VNC_AUTH_CHALLENGE_SIZE);
-
     /* Calculate the expected challenge response */
-    pwlen = strlen(vs->vd->password);
-    for (i=0; i<sizeof(key); i++)
-        key[i] = i<pwlen ? vs->vd->password[i] : 0;
-    vnc_munge_des_rfb_key(key, sizeof(key));
-
-    cipher = qcrypto_cipher_new(
-        QCRYPTO_CIPHER_ALG_DES,
-        QCRYPTO_CIPHER_MODE_ECB,
-        key, G_N_ELEMENTS(key),
-        &err);
-    if (!cipher) {
-        trace_vnc_auth_fail(vs, vs->auth, "cannot create cipher",
-                            error_get_pretty(err));
-        error_free(err);
-        goto reject;
-    }
-
-    if (qcrypto_cipher_encrypt(cipher,
-                               vs->challenge,
-                               response,
-                               VNC_AUTH_CHALLENGE_SIZE,
-                               &err) < 0) {
-        trace_vnc_auth_fail(vs, vs->auth, "cannot encrypt challenge response",
-                            error_get_pretty(err));
-        error_free(err);
+    if (vnc_challenge_encrypt(vs, response) < 0) {
         goto reject;
     }
 
@@ -2807,12 +2869,10 @@ static int protocol_client_auth_vnc(VncState *vs, uint8_t *data, size_t len)
         start_client_init(vs);
     }
 
-    qcrypto_cipher_free(cipher);
     return 0;
 
 reject:
     authentication_failed(vs);
-    qcrypto_cipher_free(cipher);
     return 0;
 }
 
@@ -4059,7 +4119,9 @@ void vnc_display_open(const char *id, Error **errp)
             goto fail;
         }
         if (!qcrypto_cipher_supports(
-                QCRYPTO_CIPHER_ALG_DES, QCRYPTO_CIPHER_MODE_ECB)) {
+                QCRYPTO_CIPHER_ALG_DES, QCRYPTO_CIPHER_MODE_ECB) &&
+            !qcrypto_cipher_supports(
+                QCRYPTO_CIPHER_ALG_DES, QCRYPTO_CIPHER_MODE_CBC)) {
             error_setg(errp,
                        "Cipher backend does not support DES algorithm");
             goto fail;
