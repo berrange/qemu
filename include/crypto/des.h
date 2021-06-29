@@ -10,8 +10,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#ifndef QCRYPTO_DESRFB_H
-#define QCRYPTO_DESRFB_H
+#ifndef QCRYPTO_DES_H
+#define QCRYPTO_DES_H
 
 /* d3des.h -
  *

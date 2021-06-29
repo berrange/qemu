@@ -19,7 +19,7 @@
  */
 
 #include "crypto/aes.h"
-#include "crypto/desrfb.h"
+#include "crypto/des.h"
 #include "crypto/xts.h"
 
 typedef struct QCryptoCipherBuiltinAESContext QCryptoCipherBuiltinAESContext;

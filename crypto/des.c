@@ -32,7 +32,7 @@
  */
 
 #include "qemu/osdep.h"
-#include "crypto/desrfb.h"
+#include "crypto/des.h"
 
 static void scrunch(unsigned char *, unsigned long *);
 static void unscrun(unsigned long *, unsigned char *);
