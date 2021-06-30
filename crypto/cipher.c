@@ -136,6 +136,8 @@ qcrypto_cipher_validate_key_length(QCryptoCipherAlgorithm alg,
 #include "cipher-gcrypt.c.inc"
 #elif defined CONFIG_CRYPTO_BACKEND_NETTLE
 #include "cipher-nettle.c.inc"
+#elif defined CONFIG_CRYPTO_BACKEND_GNUTLS
+#include "cipher-builtin.c.inc"
 #elif defined CONFIG_CRYPTO_BACKEND_BUILTIN
 #include "cipher-builtin.c.inc"
 #else

@@ -813,16 +813,29 @@ endif
 # GNUTLS is needed for TLS support regardless of our
 # general crypto backend choice
 gnutls = not_found
+gnutls_backend_possible = false
 if not get_option('gnutls').auto() or have_system
-  gnutls = dependency('gnutls', version: '>=3.5.18',
+  # Version 3.6.8 is needed to get XTS
+  # Version 3.6.13 is needed to get PBKDF
+  gnutls = dependency('gnutls', version: '>=3.6.13',
                       method: 'pkg-config',
                       required: get_option('gnutls'),
                       kwargs: static_kwargs)
+  if gnutls.found()
+    gnutls_backend_possible = true
+  else
+    # Our min version if all we need is TLS
+    gnutls = dependency('gnutls', version: '>=3.5.18',
+			method: 'pkg-config',
+			required: get_option('gnutls'),
+			kwargs: static_kwargs)
+  endif
 endif
 
 # Now figure out which library to use for the crypto
 # backend driver. We can choose between
 #
+#  - gnutls - limited cipher algorithms, FIPS, good HW accel
 #  - gcrypt - all algorithms, FIPS, good HW accel
 #  - nettle - all algorithms, no FIPS, minimal HW accel
 #  - builtin - builtin AES/DES only, and GLib for hash/hmac,
@@ -842,6 +855,16 @@ xts = 'none'
 # driver to minimize dependancies.
 if crypto_backend == 'auto' and not have_system
   crypto_backend = 'builtin'
+endif
+
+if crypto_backend == 'gnutls'
+  if not gnutls.found()
+    error('gnutls cryptography backend requested, but library not found')
+  endif
+  if not gnutls_backend_possible
+    error('gnutls cryptography backend requested, but library is too old')
+  endif
+  xts = 'private'
 endif
 
 # gcrypt is first preference, principally due to the
@@ -1269,6 +1292,7 @@ config_host_data.set('CONFIG_GETTID', has_gettid)
 config_host_data.set('CONFIG_CRYPTO_BACKEND_BUILTIN', crypto_backend == 'builtin')
 config_host_data.set('CONFIG_CRYPTO_BACKEND_NETTLE', crypto_backend == 'nettle')
 config_host_data.set('CONFIG_CRYPTO_BACKEND_GCRYPT', crypto_backend == 'gcrypt')
+config_host_data.set('CONFIG_CRYPTO_BACKEND_GNUTLS', crypto_backend == 'gnutls')
 config_host_data.set('CONFIG_GNUTLS', gnutls.found())
 config_host_data.set('CONFIG_QEMU_PRIVATE_XTS', xts == 'private')
 config_host_data.set('CONFIG_MALLOC_TRIM', has_malloc_trim)
