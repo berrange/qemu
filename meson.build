@@ -857,16 +857,26 @@ if crypto_backend == 'auto' and not have_system
   crypto_backend = 'builtin'
 endif
 
-if crypto_backend == 'gnutls'
+
+# We'll use gnutls as the first choice, as its speed is
+# close enough to that of gcrypt. It doesn't offer as
+# many cipher algorithms, but the missing ones are not
+# especially important
+if crypto_backend == 'auto' or crypto_backend == 'gnutls'
   if not gnutls.found()
-    error('gnutls cryptography backend requested, but library not found')
-  endif
-  if not gnutls_backend_possible
-    error('gnutls cryptography backend requested, but library is too old')
+    if crypto_backend == 'gnutls'
+      error('gnutls cryptography backend requested, but library not found')
+    endif
+  else
+    if gnutls_backend_possible
+      crypto_backend = 'gnutls'
+    elif crypto_backend == 'gnutls'
+      error('gnutls cryptography backend requested, but library is too old')
+    endif
   endif
 endif
 
-# gcrypt is first preference, principally due to the
+# gcrypt is next preference, principally due to the
 # speed of its impls. The downside is that it adds an
 # extra library dependency
 if crypto_backend == 'auto' or crypto_backend == 'gcrypt'
