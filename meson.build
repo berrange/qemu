@@ -2884,6 +2884,17 @@ summary_info += {'libudev':           libudev.found()}
 summary_info += {'FUSE lseek':        fuse_lseek.found()}
 summary(summary_info, bool_yn: true, section: 'Dependencies')
 
+if crypto_backend == 'nettle'
+  message()
+  warning('WARNING: support for "nettle" cryptography backend is deprecated')
+  message()
+  message('The nettle cryptography backend offers very poor performance')
+  message('for ciphers due to a lack of CPU hardware acceleration usage.')
+  message('It is also not suitable for FIPS certified usage scenarios.')
+  message('The recommended alternative cryptography backends are')
+  message('"gnutls" or "gcrypt"')
+endif
+
 if not supported_cpus.contains(cpu)
   message()
   warning('SUPPORT FOR THIS HOST CPU WILL GO AWAY IN FUTURE RELEASES!')
