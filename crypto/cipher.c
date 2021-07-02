@@ -132,12 +132,14 @@ qcrypto_cipher_validate_key_length(QCryptoCipherAlgorithm alg,
     return true;
 }
 
-#ifdef CONFIG_GCRYPT
+#if defined CONFIG_CRYPTO_BACKEND_GCRYPT
 #include "cipher-gcrypt.c.inc"
-#elif defined CONFIG_NETTLE
+#elif defined CONFIG_CRYPTO_BACKEND_NETTLE
 #include "cipher-nettle.c.inc"
-#else
+#elif defined CONFIG_CRYPTO_BACKEND_BUILTIN
 #include "cipher-builtin.c.inc"
+#else
+#error "unknown crypto backend defined"
 #endif
 
 QCryptoCipher *qcrypto_cipher_new(QCryptoCipherAlgorithm alg,

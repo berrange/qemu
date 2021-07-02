@@ -21,16 +21,28 @@ crypto_ss.add(files(
   'tlssession.c',
 ))
 
-if nettle.found()
+if crypto_backend == 'nettle'
   crypto_ss.add(nettle, files('hash-nettle.c', 'hmac-nettle.c', 'pbkdf-nettle.c'))
-elif gcrypt.found()
+elif crypto_backend == 'gcrypt'
   crypto_ss.add(gcrypt, files('hash-gcrypt.c', 'hmac-gcrypt.c', 'pbkdf-gcrypt.c'))
-else
+  util_ss.add(gcrypt, files('random-gcrypt.c'))
+elif crypto_backend == 'builtin'
   crypto_ss.add(files('hash-glib.c', 'hmac-glib.c', 'pbkdf-stub.c'))
   crypto_ss.add(files('des.c'))
 endif
-if xts == 'private'
-  crypto_ss.add(files('xts.c'))
+
+if crypto_backend == 'nettle' or crypto_backend == 'builtin'
+  if gnutls.found()
+    util_ss.add(gnutls, files('random-gnutls.c'))
+  elif 'CONFIG_RNG_NONE' in config_host
+    util_ss.add(files('random-none.c'))
+  else
+    util_ss.add(files('random-platform.c'))
+  endif
+
+  if xts == 'private'
+    crypto_ss.add(files('xts.c'))
+  endif
 endif
 
 crypto_ss.add(when: 'CONFIG_SECRET_KEYRING', if_true: files('secret_keyring.c'))
@@ -39,14 +51,3 @@ crypto_ss.add(when: gnutls, if_true: files('tls-cipher-suites.c'))
 
 util_ss.add(files('aes.c'))
 util_ss.add(files('init.c'))
-
-if gcrypt.found()
-  util_ss.add(gcrypt, files('random-gcrypt.c'))
-elif gnutls.found()
-  util_ss.add(gnutls, files('random-gnutls.c'))
-elif 'CONFIG_RNG_NONE' in config_host
-  util_ss.add(files('random-none.c'))
-else
-  util_ss.add(files('random-platform.c'))
-endif
-

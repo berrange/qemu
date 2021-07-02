@@ -404,6 +404,7 @@ seccomp="auto"
 glusterfs="auto"
 gtk="auto"
 tls_priority="NORMAL"
+crypto_backend="auto"
 gnutls="auto"
 nettle="auto"
 gcrypt="auto"
@@ -1369,6 +1370,8 @@ for opt do
   ;;
   --enable-gtk) gtk="enabled"
   ;;
+  --with-crypto-backend=*) crypto_backend="$optarg"
+  ;;
   --tls-priority=*) tls_priority="$optarg"
   ;;
   --disable-gnutls) gnutls="disabled"
@@ -1835,6 +1838,7 @@ disabled with --disable-FEATURE, default is enabled if available
   cfi-debug       In case of a cfi violation, a message containing the line that
                   triggered the error is written to stderr. After the error,
                   QEMU is still terminated with SIGILL
+  crypto-backend  cryptography driver backend
   gnutls          GNUTLS cryptography support
   nettle          nettle cryptography support
   gcrypt          libgcrypt cryptography support
@@ -6162,6 +6166,7 @@ if test "$skip_meson" = no; then
         -Dcurl=$curl -Dglusterfs=$glusterfs -Dbzip2=$bzip2 -Dlibiscsi=$libiscsi \
         -Dlibnfs=$libnfs -Diconv=$iconv -Dcurses=$curses -Dlibudev=$libudev\
         -Drbd=$rbd -Dlzo=$lzo -Dsnappy=$snappy -Dlzfse=$lzfse \
+        -Dcrypto_backend=$crypto_backend \
         -Dgnutls=$gnutls -Dnettle=$nettle -Dgcrypt=$gcrypt -Dauth_pam=$auth_pam \
         -Dzstd=$zstd -Dseccomp=$seccomp -Dvirtfs=$virtfs -Dcap_ng=$cap_ng \
         -Dattr=$attr -Ddefault_devices=$default_devices \

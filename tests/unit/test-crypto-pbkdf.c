@@ -25,7 +25,7 @@
 #include <sys/resource.h>
 #endif
 
-#if ((defined(CONFIG_NETTLE) || defined(CONFIG_GCRYPT)) && \
+#if ((!defined(CONFIG_CRYPTO_BACKEND_BUILTIN)) && \
      (defined(_WIN32) || defined(RUSAGE_THREAD)))
 #include "crypto/pbkdf.h"
 

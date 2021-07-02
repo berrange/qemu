@@ -810,6 +810,8 @@ if 'CONFIG_OPENGL' in config_host
                               link_args: config_host['OPENGL_LIBS'].split())
 endif
 
+# GNUTLS is needed for TLS support regardless of our
+# general crypto backend choice
 gnutls = not_found
 if not get_option('gnutls').auto() or have_system
   gnutls = dependency('gnutls', version: '>=3.5.18',
@@ -818,35 +820,80 @@ if not get_option('gnutls').auto() or have_system
                       kwargs: static_kwargs)
 endif
 
-# Gcrypt has priority over nettle
+# Now figure out which library to use for the crypto
+# backend driver. We can choose between
+#
+#  - gcrypt - all algorithms, FIPS, good HW accel
+#  - nettle - all algorithms, no FIPS, minimal HW accel
+#  - builtin - builtin AES/DES only, and GLib for hash/hmac,
+#              no FIPS, no HW accel
+#
+# With 'nettle' and 'builtin' options we might need
+# the private 'xts' implementation
+#
+crypto_backend = get_option('crypto_backend')
 gcrypt = not_found
 nettle = not_found
-xts = 'private'
-if get_option('nettle').enabled() and get_option('gcrypt').enabled()
-  error('Only one of gcrypt & nettle can be enabled')
-elif (not get_option('gcrypt').auto() or have_system) and not get_option('nettle').enabled()
+xts = 'none'
+
+# If we don't build system emulators, then we have
+# minimal crypto needs, largely satisfied by the
+# glib hash/hmac algorithms. Thus pick the builtin
+# driver to minimize dependancies.
+if crypto_backend == 'auto' and not have_system
+  crypto_backend = 'builtin'
+endif
+
+# gcrypt is first preference, principally due to the
+# speed of its impls. The downside is that it adds an
+# extra library dependency
+if crypto_backend == 'auto' or crypto_backend == 'gcrypt'
   gcrypt = dependency('libgcrypt', version: '>=1.8',
-                         method: 'config-tool',
-                         required: get_option('gcrypt'),
-                         kwargs: static_kwargs)
-  xts = 'gcrypt'
-  # Debian has removed -lgpg-error from libgcrypt-config
-  # as it "spreads unnecessary dependencies" which in
-  # turn breaks static builds...
-  if gcrypt.found() and enable_static
-    gcrypt = declare_dependency(dependencies: [
-      gcrypt,
-      cc.find_library('gpg-error', required: true, kwargs: static_kwargs)])
+                      method: 'config-tool',
+                      required: get_option('gcrypt'),
+                      kwargs: static_kwargs)
+
+  if gcrypt.found()
+    crypto_backend = 'gcrypt'
+
+    # Debian has removed -lgpg-error from libgcrypt-config
+    # as it "spreads unnecessary dependencies" which in
+    # turn breaks static builds...
+    if gcrypt.found() and enable_static
+      gcrypt = declare_dependency(dependencies: [
+        gcrypt,
+        cc.find_library('gpg-error', required: true, kwargs: static_kwargs)])
+    endif
+  elif crypto_backend == 'gcrypt'
+    error('gcrypt cryptography backend requested, but library not found')
   endif
 endif
-if (not get_option('nettle').auto() or have_system) and not gcrypt.found()
+
+# nettle is a fallback, which has not so great performance
+# but minimizes dependencies since gnutls already pulls it in
+if crypto_backend == 'auto' or crypto_backend == 'nettle'
   nettle = dependency('nettle', version: '>=3.4',
                       method: 'pkg-config',
                       required: get_option('nettle'),
                       kwargs: static_kwargs)
-  if nettle.found() and cc.has_header('nettle/xts.h', dependencies: nettle)
-    xts = 'nettle'
+  if nettle.found()
+    crypto_backend = 'nettle'
+
+    if not cc.has_header('nettle/xts.h', dependencies: nettle)
+      xts = 'private'
+    endif
+  elif crypto_backend == 'nettle'
+    error('nettle cryptography backend requested, but library not found')
   endif
+endif
+
+# No libraries found, then we can only use our minimal builtin
+if crypto_backend == 'auto'
+  crypto_backend = 'builtin'
+endif
+
+if crypto_backend == 'builtin'
+  xts = 'private'
 endif
 
 gtk = not_found
@@ -1219,9 +1266,10 @@ config_host_data.set('CONFIG_VIRTFS', have_virtfs)
 config_host_data.set('CONFIG_XKBCOMMON', xkbcommon.found())
 config_host_data.set('CONFIG_KEYUTILS', keyutils.found())
 config_host_data.set('CONFIG_GETTID', has_gettid)
+config_host_data.set('CONFIG_CRYPTO_BACKEND_BUILTIN', crypto_backend == 'builtin')
+config_host_data.set('CONFIG_CRYPTO_BACKEND_NETTLE', crypto_backend == 'nettle')
+config_host_data.set('CONFIG_CRYPTO_BACKEND_GCRYPT', crypto_backend == 'gcrypt')
 config_host_data.set('CONFIG_GNUTLS', gnutls.found())
-config_host_data.set('CONFIG_GCRYPT', gcrypt.found())
-config_host_data.set('CONFIG_NETTLE', nettle.found())
 config_host_data.set('CONFIG_QEMU_PRIVATE_XTS', xts == 'private')
 config_host_data.set('CONFIG_MALLOC_TRIM', has_malloc_trim)
 config_host_data.set('CONFIG_STATX', has_statx)
@@ -2718,15 +2766,10 @@ summary(summary_info, bool_yn: true, section: 'Block layer support')
 
 # Crypto
 summary_info = {}
+summary_info += {'Backend':           crypto_backend}
 summary_info += {'TLS priority':      config_host['CONFIG_TLS_PRIORITY']}
 summary_info += {'GNUTLS support':    gnutls.found()}
-# TODO: add back version
-summary_info += {'libgcrypt':         gcrypt.found()}
-# TODO: add back version
-summary_info += {'nettle':            nettle.found()}
-if nettle.found()
-   summary_info += {'  XTS':             xts != 'private'}
-endif
+summary_info += {'Private XTS':       xts == 'private'}
 summary_info += {'crypto afalg':      config_host.has_key('CONFIG_AF_ALG')}
 summary_info += {'rng-none':          config_host.has_key('CONFIG_RNG_NONE')}
 summary_info += {'Linux keyring':     config_host.has_key('CONFIG_SECRET_KEYRING')}
