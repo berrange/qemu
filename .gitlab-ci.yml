@@ -32,6 +32,9 @@
 # List of environment variables that can be use to modify the set
 # of jobs selected:
 #
+# - QEMU_CI
+#   If set, full set of jobs will be run instead of minimal set
+#
 # - QEMU_CI_AVOCADO_TESTING
 #   If set, tests using the Avocado framework will be run
 

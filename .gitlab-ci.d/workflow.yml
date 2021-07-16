@@ -49,3 +49,55 @@ workflow:
     # covering: external, chat, webide, merge_request_event,
     # external_pull_request_event, parent_pipeline, trigger, or pipeline)
     - when: never
+
+
+# This defines rules used to control individual job execution
+.job_workflow:
+  rules:
+    # Skip any cirrus job if either repo or api token are missing
+    - if: '$CIRRUS_VM_INSTANCE_TYPE && ($CIRRUS_GITHUB_REPO == null || $CIRRUS_API_TOKEN == null)'
+      when: never
+
+    # Any jobs marked as manual, never get automatically run in any scenario
+    - if: '$QEMU_CI_MANUAL'
+      when: manual
+      allow_failure: true
+
+    # Run all jobs for main repo staging branch
+    - if: '$CI_PROJECT_NAMESPACE == "berrange" && $CI_COMMIT_BRANCH == "staging"'
+      when: always
+
+    # If pushing to a branch with name prefix 'ci-', then acceptance
+    # tests if $QEMU_CI_AVOCADO_TESTING is set
+    - if: '$CI_COMMIT_BRANCH =~ /^ci2-/ && $QEMU_CI_ACCEPTANCE && $QEMU_CI_AVOCADO_TESTING'
+      when: always
+
+    # If user requested CI using 'git push -o ci.variable="QEMU_CI=1"',
+    # then acceptance tests if $QEMU_CI_AVOCADO_TESTING is set
+    - if: '$QEMU_CI && $QEMU_CI_ACCEPTANCE && $QEMU_CI_AVOCADO_TESTING'
+      when: always
+
+    # Otherwise never run acceptance tests, but allow manual trigger
+    - if: '$QEMU_CI && $QEMU_CI_ACCEPTANCE'
+      when: manual
+      allow_failure: true
+
+    # If pushing to a branch with name prefix 'ci-', then run all jobs
+    - if: '$CI_COMMIT_BRANCH =~ /^ci2-/'
+      when: always
+
+    # If user requested CI using 'git push -o ci.variable="QEMU_CI=1"',
+    # then run all jobs
+    - if: '$QEMU_CI'
+      when: always
+
+    # If user pushed in any other way, only default the small
+    # number of default jobs needed to sanity check basic build
+    - if: '$QEMU_CI_DEFAULT_JOB == "1"'
+      when: always
+
+    # Any other scenario, let the jobs be manually triggered.
+    # Set to be non-fatal, so that pending manual jobs don't
+    # affect overall pipeline status
+    - when: manual
+      allow_failure: true
