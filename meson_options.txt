@@ -152,6 +152,5 @@ option('capstone', type: 'combo', value: 'auto',
 option('slirp', type: 'combo', value: 'auto',
        choices: ['disabled', 'enabled', 'auto', 'system', 'internal'],
        description: 'Whether and how to find the slirp library')
-option('fdt', type: 'combo', value: 'auto',
-       choices: ['disabled', 'enabled', 'auto', 'system', 'internal'],
+option('fdt', type: 'feature', value: 'auto',
        description: 'Whether and how to find the libfdt library')

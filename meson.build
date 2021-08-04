@@ -1899,44 +1899,16 @@ endif
 fdt = not_found
 fdt_opt = get_option('fdt')
 if have_system
-  if fdt_opt in ['enabled', 'auto', 'system']
-    have_internal = fs.exists(meson.current_source_dir() / 'dtc/libfdt/Makefile.libfdt')
-    fdt = cc.find_library('fdt', kwargs: static_kwargs,
-                          required: fdt_opt == 'system' or
-                                    fdt_opt == 'enabled' and not have_internal)
-    if fdt.found() and cc.links('''
-       #include <libfdt.h>
-       #include <libfdt_env.h>
-       int main(void) { fdt_check_full(NULL, 0); return 0; }''',
-         dependencies: fdt)
-      fdt_opt = 'system'
-    elif have_internal
-      fdt_opt = 'internal'
-    else
-      fdt_opt = 'disabled'
-    endif
-  endif
-  if fdt_opt == 'internal'
-    fdt_files = files(
-      'dtc/libfdt/fdt.c',
-      'dtc/libfdt/fdt_ro.c',
-      'dtc/libfdt/fdt_wip.c',
-      'dtc/libfdt/fdt_sw.c',
-      'dtc/libfdt/fdt_rw.c',
-      'dtc/libfdt/fdt_strerror.c',
-      'dtc/libfdt/fdt_empty_tree.c',
-      'dtc/libfdt/fdt_addresses.c',
-      'dtc/libfdt/fdt_overlay.c',
-      'dtc/libfdt/fdt_check.c',
-    )
-
-    fdt_inc = include_directories('dtc/libfdt')
-    libfdt = static_library('fdt',
-                            build_by_default: false,
-                            sources: fdt_files,
-                            include_directories: fdt_inc)
-    fdt = declare_dependency(link_with: libfdt,
-                             include_directories: fdt_inc)
+  fdt = cc.find_library('fdt', kwargs: static_kwargs,
+                        required: fdt_opt)
+  if fdt.found() and cc.links('''
+     #include <libfdt.h>
+     #include <libfdt_env.h>
+     int main(void) { fdt_check_full(NULL, 0); return 0; }''',
+       dependencies: fdt)
+    fdt_opt = 'enabled'
+  else
+    fdt_opt = 'disabled'
   endif
 endif
 if not fdt.found() and fdt_required.length() > 0
@@ -3069,7 +3041,7 @@ summary_info += {'Linux io_uring support': linux_io_uring.found()}
 summary_info += {'ATTR/XATTR support': libattr.found()}
 summary_info += {'RDMA support':      config_host.has_key('CONFIG_RDMA')}
 summary_info += {'PVRDMA support':    config_host.has_key('CONFIG_PVRDMA')}
-summary_info += {'fdt support':       fdt_opt == 'disabled' ? false : fdt_opt}
+summary_info += {'fdt support':       fdt.found()}
 summary_info += {'libcap-ng support': libcap_ng.found()}
 summary_info += {'bpf support': libbpf.found()}
 # TODO: add back protocol and server version

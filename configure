@@ -1216,10 +1216,6 @@ for opt do
   ;;
   --enable-fdt) fdt="enabled"
   ;;
-  --enable-fdt=git) fdt="internal"
-  ;;
-  --enable-fdt=system) fdt="system"
-  ;;
   --disable-linux-aio) linux_aio="no"
   ;;
   --enable-linux-aio) linux_aio="yes"
@@ -3438,16 +3434,6 @@ iovec=no
 if compile_prog "" "" ; then
   iovec=yes
 fi
-
-##########################################
-# fdt probe
-
-case "$fdt" in
-  auto | enabled | internal)
-    # Simpler to always update submodule, even if not needed.
-    git_submodules="${git_submodules} dtc"
-    ;;
-esac
 
 ##########################################
 # opengl probe (for sdl2, gtk)
