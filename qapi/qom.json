@@ -799,19 +799,11 @@
   'data': { '*filename': 'str' } }
 
 ##
-# @SevGuestProperties:
+# @SevCommonProperties:
 #
-# Properties for sev-guest objects.
+# Properties common to objects that are derivatives of sev-common.
 #
 # @sev-device: SEV device to use (default: "/dev/sev")
-#
-# @dh-cert-file: guest owners DH certificate (encoded with base64)
-#
-# @session-file: guest owners session parameters (encoded with base64)
-#
-# @policy: SEV policy value (default: 0x1)
-#
-# @handle: SEV firmware handle (default: 0)
 #
 # @cbitpos: C-bit location in page table entry (default: 0)
 #
@@ -824,15 +816,33 @@
 #
 # Since: 2.12
 ##
-{ 'struct': 'SevGuestProperties',
+{ 'struct': 'SevCommonProperties',
   'data': { '*sev-device': 'str',
-            '*dh-cert-file': 'str',
-            '*session-file': 'str',
-            '*policy': 'uint32',
-            '*handle': 'uint32',
             '*cbitpos': 'uint32',
             'reduced-phys-bits': 'uint32',
             '*kernel-hashes': 'bool' } }
+
+##
+# @SevGuestProperties:
+#
+# Properties for sev-guest objects.
+#
+# @dh-cert-file: guest owners DH certificate (encoded with base64)
+#
+# @session-file: guest owners session parameters (encoded with base64)
+#
+# @policy: SEV policy value (default: 0x1)
+#
+# @handle: SEV firmware handle (default: 0)
+#
+# Since: 2.12
+##
+{ 'struct': 'SevGuestProperties',
+  'base': 'SevCommonProperties',
+  'data': { '*dh-cert-file': 'str',
+            '*session-file': 'str',
+            '*policy': 'uint32',
+            '*handle': 'uint32' } }
 
 ##
 # @ThreadContextProperties:
