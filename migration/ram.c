@@ -337,6 +337,10 @@ struct RAMState {
     /* amount of compressed pages */
     uint64_t compress_pages_prev;
 
+    /* Offset in saved file at which to emit RAM pages */
+    GHashTable *ramblock_offsets;
+    off_t ramblock_start;
+
     /* total handled target pages at the beginning of period */
     uint64_t target_page_count_prev;
     /* total handled target pages since start */
@@ -356,6 +360,11 @@ typedef struct RAMState RAMState;
 static RAMState *ram_state;
 
 static NotifierWithReturnList precopy_notifier_list;
+
+void ram_set_block_start(off_t offset)
+{
+    ram_state->ramblock_start = offset;
+}
 
 /* Whether postcopy has queued requests? */
 static bool postcopy_has_request(RAMState *rs)
@@ -1287,17 +1296,25 @@ static bool control_save_page(RAMState *rs, RAMBlock *block, ram_addr_t offset,
 static int save_normal_page(RAMState *rs, RAMBlock *block, ram_addr_t offset,
                             uint8_t *buf, bool async)
 {
-    ram_transferred_add(save_page_header(rs, rs->f, block,
-                                         offset | RAM_SAVE_FLAG_PAGE));
-    if (async) {
-        qemu_put_buffer_async(rs->f, buf, TARGET_PAGE_SIZE,
-                              migrate_release_ram() &&
-                              migration_in_postcopy());
+    if (migrate_memory_mapped()) {
+        off_t *blockoff = g_hash_table_lookup(rs->ramblock_offsets, block->idstr);
+        if (!blockoff)
+            g_printerr("Lookup %s %p %p\n", block->idstr, block, blockoff);
+        assert(blockoff);
+        qemu_put_buffer_at(rs->f, buf, TARGET_PAGE_SIZE, *blockoff + offset);
     } else {
-        qemu_put_buffer(rs->f, buf, TARGET_PAGE_SIZE);
+        ram_transferred_add(save_page_header(rs, rs->f, block,
+                                             offset | RAM_SAVE_FLAG_PAGE));
+        if (async) {
+            qemu_put_buffer_async(rs->f, buf, TARGET_PAGE_SIZE,
+                                  migrate_release_ram() &&
+                                  migration_in_postcopy());
+        } else {
+            qemu_put_buffer(rs->f, buf, TARGET_PAGE_SIZE);
+        }
+        ram_transferred_add(TARGET_PAGE_SIZE);
+        ram_counters.normal++;
     }
-    ram_transferred_add(TARGET_PAGE_SIZE);
-    ram_counters.normal++;
     return 1;
 }
 
@@ -2955,6 +2972,37 @@ static int ram_save_setup(QEMUFile *f, void *opaque)
     return 0;
 }
 
+static void ram_save_block_offsets(QEMUFile *f, RAMState *rs)
+{
+    RAMBlock *block;
+    off_t off;
+
+    rs->ramblock_offsets = g_hash_table_new_full(
+        g_str_hash, g_str_equal,
+        g_free, g_free);
+
+    off = rs->ramblock_start;
+    RAMBLOCK_FOREACH_MIGRATABLE(block) {
+        off_t *blockoff = g_new0(off_t, 1);
+        *blockoff = off;
+        g_hash_table_insert(rs->ramblock_offsets, g_strdup(block->idstr), blockoff);
+
+        off += block->used_length;
+    }
+    g_printerr("Off %llu\n", (unsigned long long)qemu_get_offset(rs->f));
+    qemu_put_be64(f, 0);
+    g_printerr("Off %llu\n", (unsigned long long)qemu_get_offset(rs->f));
+
+    RAMBLOCK_FOREACH_MIGRATABLE(block) {
+        off_t *blockoff = g_hash_table_lookup(rs->ramblock_offsets, block->idstr);
+        *blockoff += qemu_get_offset(rs->f);
+        g_printerr("Set %s -> %llu\n",
+                   block->idstr,
+                   (unsigned long long)blockoff);
+    }
+
+}
+
 /**
  * ram_save_iterate: iterative stage for migration
  *
@@ -2977,6 +3025,10 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
          * the bulk phase will usually take a long time and transferring
          * ram updates during that time is pointless. */
         goto out;
+    }
+
+    if (migrate_memory_mapped()) {
+        ram_save_block_offsets(f, rs);
     }
 
     /*
@@ -3055,6 +3107,7 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
     ram_control_after_iterate(f, RAM_CONTROL_ROUND);
 
 out:
+
     if (ret >= 0
         && migration_is_setup_or_active(migrate_get_current()->state)) {
         ret = multifd_send_sync_main(rs->f);

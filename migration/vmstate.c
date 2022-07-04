@@ -240,6 +240,11 @@ static bool vmsd_can_compress(const VMStateField *field)
         }
     }
 
+    /* Arrays containing pointers may have variable size elements */
+    if (field->flags & VMS_POINTER) {
+        return false;
+    }
+
     return true;
 }
 

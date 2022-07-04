@@ -103,6 +103,12 @@ int64_t qemu_file_total_transferred_fast(QEMUFile *f);
  */
 void qemu_put_buffer_async(QEMUFile *f, const uint8_t *buf, size_t size,
                            bool may_free);
+void qemu_put_buffer_at(QEMUFile *f,
+                        const uint8_t *buf,
+                        size_t size,
+                        off_t pos);
+off_t qemu_get_offset(QEMUFile *f);
+void qemu_set_offset(QEMUFile *f, off_t off, int whence);
 bool qemu_file_mode_is_not_valid(const char *mode);
 bool qemu_file_is_writable(QEMUFile *f);
 
@@ -113,6 +119,9 @@ size_t qemu_get_buffer_in_place(QEMUFile *f, uint8_t **buf, size_t size);
 ssize_t qemu_put_compression_data(QEMUFile *f, z_stream *stream,
                                   const uint8_t *p, size_t size);
 int qemu_put_qemu_file(QEMUFile *f_des, QEMUFile *f_src);
+
+bool qemu_file_is_seekable(QEMUFile *f);
+
 
 /*
  * Note that you can only peek continuous bytes from where the current pointer

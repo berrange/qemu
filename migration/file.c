@@ -24,7 +24,7 @@ void file_start_outgoing_migration(MigrationState *s, const char *filename, Erro
     QIOChannelFile *ioc;
 
     trace_migration_file_outgoing(filename);
-    ioc = qio_channel_file_new_path(filename, O_WRONLY, 0600, errp);
+    ioc = qio_channel_file_new_path(filename, O_WRONLY|O_CREAT|O_TRUNC, 0600, errp);
     if (!ioc) {
         return;
     }

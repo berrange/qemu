@@ -468,6 +468,9 @@
 #                  for guest RAM pages.
 #                  (since 7.1)
 #
+# @x-memory-mapped: directly map memory to the output. Requires a transport
+#                   support random access I/O.
+#
 # Features:
 # @unstable: Members @x-colo and @x-ignore-shared are experimental.
 #
@@ -482,7 +485,8 @@
            'dirty-bitmaps', 'postcopy-blocktime', 'late-block-activate',
            { 'name': 'x-ignore-shared', 'features': [ 'unstable' ] },
            'validate-uuid', 'background-snapshot',
-           'zero-copy-send'] }
+           'zero-copy-send',
+           { 'name': 'x-memory-mapped', 'features': ['unstable'] } ] }
 
 ##
 # @MigrationCapabilityStatus:

@@ -164,7 +164,8 @@ INITIALIZE_MIGRATE_CAPS_SET(check_caps_background_snapshot,
     MIGRATION_CAPABILITY_XBZRLE,
     MIGRATION_CAPABILITY_X_COLO,
     MIGRATION_CAPABILITY_VALIDATE_UUID,
-    MIGRATION_CAPABILITY_ZERO_COPY_SEND);
+    MIGRATION_CAPABILITY_ZERO_COPY_SEND,
+    MIGRATION_CAPABILITY_X_MEMORY_MAPPED);
 
 /* When we add fault tolerance, we could have several
    migrations at once.  For now we don't need to add
@@ -498,6 +499,7 @@ static void qemu_start_incoming_migration(const char *uri, Error **errp)
     } else if (strstart(uri, "fd:", &p)) {
         fd_start_incoming_migration(p, errp);
     } else if (strstart(uri, "file:", &p)) {
+        migrate_protocol_allow_multi_channels(true);
         file_start_incoming_migration(p, errp);
     } else {
         error_setg(errp, "unknown migration protocol: %s", uri);
@@ -1291,6 +1293,26 @@ static bool migrate_caps_check(bool *cap_list,
     }
 #endif
 
+    if (cap_list[MIGRATION_CAPABILITY_X_MEMORY_MAPPED] &&
+        cap_list[MIGRATION_CAPABILITY_MULTIFD]) {
+        error_setg(errp,
+                   "Directly mapped memory incompatible with multifd");
+        return false;
+    }
+
+    if (cap_list[MIGRATION_CAPABILITY_X_MEMORY_MAPPED] &&
+        cap_list[MIGRATION_CAPABILITY_XBZRLE]) {
+        error_setg(errp,
+                   "Directly mapped memory incompatible with xbzrle");
+        return false;
+    }
+
+    if (cap_list[MIGRATION_CAPABILITY_X_MEMORY_MAPPED] &&
+        cap_list[MIGRATION_CAPABILITY_COMPRESS]) {
+        error_setg(errp,
+                   "Directly mapped memory incompatible with compression");
+        return false;
+    }
 
     /* incoming side only */
     if (runstate_check(RUN_STATE_INMIGRATE) &&
@@ -2360,6 +2382,7 @@ void qmp_migrate(const char *uri, bool has_blk, bool blk,
     } else if (strstart(uri, "fd:", &p)) {
         fd_start_outgoing_migration(s, p, &local_err);
     } else if (strstart(uri, "file:", &p)) {
+        migrate_protocol_allow_multi_channels(true);
         file_start_outgoing_migration(s, p, &local_err);
     } else {
         if (!(has_resume && resume)) {
@@ -2603,6 +2626,15 @@ int migrate_use_tls(void)
     s = migrate_get_current();
 
     return s->parameters.tls_creds && *s->parameters.tls_creds;
+}
+
+int migrate_memory_mapped(void)
+{
+    MigrationState *s;
+
+    s = migrate_get_current();
+
+    return s->enabled_capabilities[MIGRATION_CAPABILITY_X_MEMORY_MAPPED];
 }
 
 int migrate_use_xbzrle(void)
@@ -4080,12 +4112,27 @@ fail:
     return NULL;
 }
 
+static int
+migrate_check_memory_mapped(MigrationState *s, Error **errp)
+{
+    if (!s->enabled_capabilities[MIGRATION_CAPABILITY_X_MEMORY_MAPPED])
+        return 0;
+
+    if (!qemu_file_is_seekable(s->to_dst_file)) {
+        error_setg(errp, "Directly mapped memory requires a seekable transport");
+        return -1;
+    }
+
+    return 0;
+}
+
 void migrate_fd_connect(MigrationState *s, Error *error_in)
 {
     Error *local_err = NULL;
     int64_t rate_limit;
     bool resume = s->state == MIGRATION_STATUS_POSTCOPY_PAUSED;
 
+    g_printerr("FD connect\n");
     /*
      * If there's a previous error, free it and prepare for another one.
      * Meanwhile if migration completes successfully, there won't have an error
@@ -4098,8 +4145,10 @@ void migrate_fd_connect(MigrationState *s, Error *error_in)
         assert(s->cleanup_bh);
     } else {
         assert(!s->cleanup_bh);
+        g_printerr("BH\n");
         s->cleanup_bh = qemu_bh_new(migrate_fd_cleanup_bh, s);
     }
+    g_printerr("here\n");
     if (error_in) {
         migrate_fd_error(s, error_in);
         if (resume) {
@@ -4114,6 +4163,12 @@ void migrate_fd_connect(MigrationState *s, Error *error_in)
         } else {
             migrate_fd_cleanup(s);
         }
+        return;
+    }
+
+    if (migrate_check_memory_mapped(s, &local_err) < 0) {
+        migrate_fd_cleanup(s);
+        migrate_fd_error(s, local_err);
         return;
     }
 

@@ -240,6 +240,8 @@ static bool should_validate_capability(int capability)
     /* Validate only new capabilities to keep compatibility. */
     switch (capability) {
     case MIGRATION_CAPABILITY_X_IGNORE_SHARED:
+    case MIGRATION_CAPABILITY_X_MEMORY_MAPPED:
+    case MIGRATION_CAPABILITY_VALIDATE_UUID:
         return true;
     default:
         return false;
@@ -757,6 +759,7 @@ int register_savevm_live(const char *idstr,
     SaveStateEntry *se;
 
     se = g_new0(SaveStateEntry, 1);
+    g_printerr("Handler '%s' %d %d\n", idstr, instance_id, version_id);
     se->version_id = version_id;
     se->section_id = savevm_state.global_section_id++;
     se->ops = ops;
@@ -1372,6 +1375,15 @@ int qemu_savevm_state_complete_precopy_non_iterable(QEMUFile *f,
     vmdesc = json_writer_new(false);
     json_writer_start_object(vmdesc, NULL);
     json_writer_int64(vmdesc, "page_size", qemu_target_page_size());
+
+    if (migrate_get_current()->send_configuration) {
+        json_writer_start_object(vmdesc, "configuration");
+
+        vmstate_save_state(f, &vmstate_configuration, &savevm_state, vmdesc);
+
+        json_writer_end_object(vmdesc);
+    }
+
     json_writer_start_array(vmdesc, "devices");
     QTAILQ_FOREACH(se, &savevm_state.handlers, entry) {
 
@@ -1540,6 +1552,11 @@ static int qemu_savevm_state(QEMUFile *f, Error **errp)
     qemu_savevm_state_header(f);
     qemu_savevm_state_setup(f);
     qemu_mutex_lock_iothread();
+
+    if (migrate_memory_mapped()) {
+        uint64_t ramregion = ram_bytes_total();
+        qemu_set_offset(f, ramregion, SEEK_CUR);
+    }
 
     while (qemu_file_get_error(f) == 0) {
         if (qemu_savevm_state_iterate(f, false) > 0) {

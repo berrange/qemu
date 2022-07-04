@@ -69,6 +69,7 @@ void migration_channel_connect(MigrationState *s,
     trace_migration_set_outgoing_channel(
         ioc, object_get_typename(OBJECT(ioc)), hostname, error);
 
+    g_printerr("Connect\n");
     if (!error) {
         if (s->parameters.tls_creds &&
             *s->parameters.tls_creds &&

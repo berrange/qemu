@@ -474,10 +474,10 @@ void qio_channel_set_cork(QIOChannel *ioc,
 }
 
 
-off_t qio_channel_io_seek(QIOChannel *ioc,
-                          off_t offset,
-                          int whence,
-                          Error **errp)
+off_t qio_channel_seek(QIOChannel *ioc,
+                       off_t offset,
+                       int whence,
+                       Error **errp)
 {
     QIOChannelClass *klass = QIO_CHANNEL_GET_CLASS(ioc);
 

@@ -121,6 +121,7 @@ class RamSection(object):
         self.TARGET_PAGE_SIZE = ramargs['page_size']
         self.dump_memory = ramargs['dump_memory']
         self.write_memory = ramargs['write_memory']
+        self.memory_mapped = ramargs['memory_mapped']
         self.sizeinfo = collections.OrderedDict()
         self.data = collections.OrderedDict()
         self.data['section sizes'] = self.sizeinfo
@@ -140,13 +141,38 @@ class RamSection(object):
     def getDict(self):
         return self.data
 
+    def read_mapped(self):
+        blocks = []
+        print("Mapped\n")
+        while True:
+            namelen = self.file.read64()
+            if namelen == 0:
+                return
+
+            print("%x\n" % namelen)
+            name = self.file.readstr(len=namelen)
+            print(name)
+            offset = self.file.read64()
+            length = self.file.read64()
+
+            blocks += [name, offset, length]
+            print("%s: %d -> %d\n", name, offset,length)
+
+        bits = self.file.readvar(4)
+        print(bits)
+        os.stdout.flush()
+        for block in blocks:
+            self.file.readvar(block[2])
+    
     def read(self):
+        print("RAM READ\n")
         # Read all RAM sections
         while True:
             addr = self.file.read64()
             flags = addr & (self.TARGET_PAGE_SIZE - 1)
             addr &= ~(self.TARGET_PAGE_SIZE - 1)
 
+            print("Once 0x%x %x\n"% ( addr, flags))
             if flags & self.RAM_SAVE_FLAG_MEM_SIZE:
                 while True:
                     namelen = self.file.read8()
@@ -208,6 +234,7 @@ class RamSection(object):
 
             # End of RAM section
             if flags & self.RAM_SAVE_FLAG_EOS:
+                print("Done\n")
                 break
 
             if flags != 0:
@@ -257,12 +284,17 @@ class HTABSection(object):
 
 
 class ConfigurationSection(object):
-    def __init__(self, file):
+    def __init__(self, file, desc):
         self.file = file
+        
 
     def read(self):
         name_len = self.file.read32()
+        print("%04x\n" % name_len)
         name = self.file.readstr(len = name_len)
+        print(name)
+
+                
 
 class VMSDFieldGeneric(object):
     def __init__(self, desc, file):
@@ -521,15 +553,37 @@ class MigrationDump(object):
         ramargs['page_size'] = self.vmsd_desc['page_size']
         ramargs['dump_memory'] = dump_memory
         ramargs['write_memory'] = write_memory
+        ramargs['memory_mapped'] = False
         self.section_classes[('ram',0)][1] = ramargs
 
         while True:
             section_type = file.read8()
+            print("Iter %d\n" % section_type)
             if section_type == self.QEMU_VM_EOF:
                 break
             elif section_type == self.QEMU_VM_CONFIGURATION:
-                section = ConfigurationSection(file)
-                section.read()
+                defdesc = {
+                    "vmsd_name": "configuration",
+                    "version": 1,
+                    "fields": [],
+                    "subsections": [],
+                }
+                desc = self.vmsd_desc.get('configuration', defdesc)
+                config = VMSDSection(file, 1, desc, 'configuration')
+                config.read()
+
+                caps = config.data.get("configuration/capabilities")
+
+                if caps is not None:
+                    caps = caps.data["capabilities"]
+                    if type(caps) != list:
+                        caps = [caps]
+                    for i in caps:
+                        # chomp out string length
+                        cap = i.data[1:].decode("utf8")
+                        if cap == "x-memory-mapped":
+                            ramargs['memory_mapped'] = True
+                print(config)
             elif section_type == self.QEMU_VM_SECTION_START or section_type == self.QEMU_VM_SECTION_FULL:
                 section_id = file.read32()
                 name = file.readstr()
@@ -537,11 +591,14 @@ class MigrationDump(object):
                 version_id = file.read32()
                 section_key = (name, instance_id)
                 classdesc = self.section_classes[section_key]
+                print("Section %i %s" % (section_id, str(classdesc)))
                 section = classdesc[0](file, version_id, classdesc[1], section_key)
                 self.sections[section_id] = section
                 section.read()
+                print("Doneeee")
             elif section_type == self.QEMU_VM_SECTION_PART or section_type == self.QEMU_VM_SECTION_END:
                 section_id = file.read32()
+                print("Part\n")
                 self.sections[section_id].read()
             elif section_type == self.QEMU_VM_SECTION_FOOTER:
                 read_section_id = file.read32()

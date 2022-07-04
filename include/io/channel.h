@@ -41,6 +41,7 @@ enum QIOChannelFeature {
     QIO_CHANNEL_FEATURE_SHUTDOWN,
     QIO_CHANNEL_FEATURE_LISTEN,
     QIO_CHANNEL_FEATURE_WRITE_ZERO_COPY,
+    QIO_CHANNEL_FEATURE_SEEKABLE,
 };
 
 
@@ -601,10 +602,10 @@ void qio_channel_set_cork(QIOChannel *ioc,
  *
  * Returns: the new position on success, (off_t)-1 on failure
  */
-off_t qio_channel_io_seek(QIOChannel *ioc,
-                          off_t offset,
-                          int whence,
-                          Error **errp);
+off_t qio_channel_seek(QIOChannel *ioc,
+                       off_t offset,
+                       int whence,
+                       Error **errp);
 
 
 /**

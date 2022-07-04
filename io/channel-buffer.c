@@ -36,6 +36,7 @@ qio_channel_buffer_new(size_t capacity)
         ioc->data = g_new0(uint8_t, capacity);
         ioc->capacity = capacity;
     }
+    qio_channel_set_feature(QIO_CHANNEL(ioc), QIO_CHANNEL_FEATURE_SEEKABLE);
 
     return ioc;
 }

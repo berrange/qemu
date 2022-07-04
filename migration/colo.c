@@ -416,7 +416,7 @@ static int colo_do_checkpoint_transaction(MigrationState *s,
         goto out;
     }
     /* Reset channel-buffer directly */
-    qio_channel_io_seek(QIO_CHANNEL(bioc), 0, 0, NULL);
+    qio_channel_seek(QIO_CHANNEL(bioc), 0, 0, NULL);
     bioc->usage = 0;
 
     qemu_mutex_lock_iothread();
@@ -730,7 +730,7 @@ static void colo_incoming_process_checkpoint(MigrationIncomingState *mis,
         return;
     }
     bioc->usage = total_size;
-    qio_channel_io_seek(QIO_CHANNEL(bioc), 0, 0, NULL);
+    qio_channel_seek(QIO_CHANNEL(bioc), 0, 0, NULL);
 
     colo_send_message(mis->to_src_file, COLO_MESSAGE_VMSTATE_RECEIVED,
                  &local_err);

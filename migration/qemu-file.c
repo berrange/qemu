@@ -143,6 +143,12 @@ void qemu_file_set_hooks(QEMUFile *f, const QEMUFileHooks *hooks)
     f->hooks = hooks;
 }
 
+bool qemu_file_is_seekable(QEMUFile *f)
+{
+    return qio_channel_has_feature(f->ioc, QIO_CHANNEL_FEATURE_SEEKABLE);
+}
+
+
 /*
  * Get last error for stream f with optional Error*
  *
@@ -510,6 +516,54 @@ void qemu_put_buffer(QEMUFile *f, const uint8_t *buf, size_t size)
         }
         buf += l;
         size -= l;
+    }
+}
+
+void qemu_put_buffer_at(QEMUFile *f,
+                        const uint8_t *buf,
+                        size_t size,
+                        off_t pos)
+{
+    Error *err = NULL;
+
+    qemu_fflush(f);
+
+    if (qio_channel_seek(f->ioc, pos, SEEK_SET, &err) == (off_t)-1)
+        goto error;
+    if (qio_channel_write(f->ioc, (const char *)buf, size, &err) < 0)
+        goto error;
+
+    return;
+
+ error:
+    qemu_file_set_error_obj(f, -EIO, err);
+    return;
+}
+
+off_t qemu_get_offset(QEMUFile *f)   
+{
+    Error *err = NULL;
+    off_t ret;
+
+    qemu_fflush(f);
+
+    ret = qio_channel_seek(f->ioc, 0, SEEK_CUR, &err);
+    if (ret == (off_t)-1) {
+        qemu_file_set_error_obj(f, -EIO, err);
+    }
+    return ret;
+}
+
+void qemu_set_offset(QEMUFile *f, off_t off, int whence)
+{
+    Error *err = NULL;
+    off_t ret;
+
+    qemu_fflush(f);
+
+    ret = qio_channel_seek(f->ioc, off, whence, &err);
+    if (ret == (off_t)-1) {
+        qemu_file_set_error_obj(f, -EIO, err);
     }
 }
 
