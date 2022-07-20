@@ -2680,6 +2680,9 @@ for target in $target_list; do
 done
 echo "TCG_TESTS_TARGETS=$tcg_tests_targets" >> $makefile)
 
+echo "FDamn"
+exit 1
+
 if test "$skip_meson" = no; then
   cross="config-meson.cross.new"
   meson_quote() {
