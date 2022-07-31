@@ -2233,7 +2233,7 @@ void build_tpm2(GArray *table_data, BIOSLinker *linker, GArray *tcpalog,
     if (TPM_IS_TIS_ISA(tpmif) || TPM_IS_TIS_SYSBUS(tpmif)) {
         control_area_start_address = 0;
         start_method = TPM2_START_METHOD_MMIO;
-    } else if (TPM_IS_CRB(tpmif)) {
+    } else if (TPM_IS_CRB(tpmif) || TPM_IS_CRB_SVSM(tpmif)) {
         control_area_start_address = TPM_CRB_ADDR_CTRL;
         start_method = TPM2_START_METHOD_CRB;
     } else {

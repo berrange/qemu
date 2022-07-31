@@ -131,6 +131,8 @@ static int tpm_emulator_ctrlcmd(TPMEmulator *tpm, unsigned long cmd, void *msg,
     ssize_t n = sizeof(uint32_t) + msg_len_in;
     uint8_t *buf = NULL;
 
+    trace_tpm_emulator_ctrlcmd(cmd, n);
+
     WITH_QEMU_LOCK_GUARD(&tpm->mutex) {
         buf = g_alloca(n);
         memcpy(buf, &cmd_no, sizeof(cmd_no));

@@ -18,6 +18,10 @@ config TPM_CRB
     depends on TPM && PC
     select TPM_BACKEND
 
+config TPM_CRB_SVSM
+    bool
+    depends on TPM && PC
+
 config TPM_SPAPR
     bool
     default y

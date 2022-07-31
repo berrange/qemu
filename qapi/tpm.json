@@ -32,7 +32,7 @@
 # Example:
 #
 # -> { "execute": "query-tpm-models" }
-# <- { "return": [ "tpm-tis", "tpm-crb", "tpm-spapr" ] }
+# <- { "return": [ "tpm-tis", "tpm-crb", "tpm-crb-svsm", "tpm-spapr" ] }
 #
 ##
 { 'command': 'query-tpm-models', 'returns': ['TpmModel'],
