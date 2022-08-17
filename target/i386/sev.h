@@ -64,4 +64,6 @@ void sev_es_set_reset_state(CPUState *cpu);
 
 int sev_kvm_init(ConfidentialGuestSupport *cgs, Error **errp);
 
+void sev_snp_svsm_init(MachineState *ms);
+
 #endif

@@ -68,3 +68,7 @@ void hmp_info_sev(Monitor *mon, const QDict *qdict)
 {
     monitor_printf(mon, "SEV is not available in this QEMU\n");
 }
+
+void sev_snp_svsm_init(MachineState *ms)
+{
+}
