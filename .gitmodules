@@ -31,6 +31,7 @@
 [submodule "ui/keycodemapdb"]
 	path = ui/keycodemapdb
 	url = https://gitlab.com/qemu-project/keycodemapdb.git
+	recurse = true
 [submodule "roms/seabios-hppa"]
 	path = roms/seabios-hppa
 	url = https://gitlab.com/qemu-project/seabios-hppa.git
