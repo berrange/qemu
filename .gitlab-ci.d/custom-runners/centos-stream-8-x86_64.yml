@@ -18,8 +18,10 @@ centos-stream-8-x86_64:
    reports:
      junit: build/tests/results/latest/results.xml
  before_script:
+ - set -x
  - JOBS=$(expr $(nproc) + 1)
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../scripts/ci/org.centos/stream/8/x86_64/configure

@@ -4,6 +4,7 @@
   image: $CI_REGISTRY_IMAGE/qemu/$IMAGE:latest
   timeout: 80m
   script:
+    - set -x
     - mkdir build
     - cd build
     - ../configure --enable-werror --disable-docs $QEMU_CONFIGURE_OPTS
@@ -29,6 +30,7 @@
   image: $CI_REGISTRY_IMAGE/qemu/$IMAGE:latest
   timeout: 30m
   script:
+    - set -x
     - mkdir build
     - cd build
     - ../configure --enable-werror --disable-docs $QEMU_CONFIGURE_OPTS
@@ -40,6 +42,7 @@
   stage: build
   image: $CI_REGISTRY_IMAGE/qemu/$IMAGE:latest
   script:
+    - set -x
     - mkdir build
     - cd build
     - ../configure --enable-werror --disable-docs $QEMU_CONFIGURE_OPTS

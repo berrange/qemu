@@ -14,6 +14,7 @@ ubuntu-20.04-s390x-all-linux-static:
  script:
  # --disable-libssh is needed because of https://bugs.launchpad.net/qemu/+bug/1838763
  # --disable-glusterfs is needed because there's no static version of those libs in distro supplied packages
+ - set -x
  - mkdir build
  - cd build
  - ../configure --enable-debug --static --disable-system --disable-glusterfs --disable-libssh
@@ -35,6 +36,7 @@ ubuntu-20.04-s390x-all:
  - if: '$CI_PROJECT_NAMESPACE == "qemu-project" && $CI_COMMIT_BRANCH =~ /^staging/'
  - if: "$S390X_RUNNER_AVAILABLE"
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure --disable-libssh
@@ -57,6 +59,7 @@ ubuntu-20.04-s390x-alldbg:
    when: manual
    allow_failure: true
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure --enable-debug --disable-libssh
@@ -80,6 +83,7 @@ ubuntu-20.04-s390x-clang:
    when: manual
    allow_failure: true
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure --disable-libssh --cc=clang --cxx=clang++ --enable-sanitizers
@@ -102,6 +106,7 @@ ubuntu-20.04-s390x-tci:
    when: manual
    allow_failure: true
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure --disable-libssh --enable-tcg-interpreter
@@ -122,6 +127,7 @@ ubuntu-20.04-s390x-notcg:
    when: manual
    allow_failure: true
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure --disable-libssh --disable-tcg

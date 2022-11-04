@@ -108,6 +108,7 @@ crash-test-debian:
   variables:
     IMAGE: debian-amd64
   script:
+    - set -x
     - cd build
     - make check-venv
     - tests/venv/bin/python3 scripts/device-crash-test -q ./qemu-system-i386
@@ -154,6 +155,7 @@ crash-test-fedora:
   variables:
     IMAGE: fedora
   script:
+    - set -x
     - cd build
     - make check-venv
     - tests/venv/bin/python3 scripts/device-crash-test -q ./qemu-system-ppc
@@ -241,6 +243,7 @@ build-tcg-disabled:
   variables:
     IMAGE: centos8
   script:
+    - set -x
     - mkdir build
     - cd build
     - ../configure --disable-tcg --audio-drv-list="" --with-coroutine=ucontext
@@ -493,6 +496,7 @@ check-gprof-gcov:
     IMAGE: ubuntu2004
     MAKE_CHECK_ARGS: check
   after_script:
+    - set -x
     - ${CI_PROJECT_DIR}/scripts/ci/coverage-summary.sh
 
 build-oss-fuzz:
@@ -502,6 +506,7 @@ build-oss-fuzz:
   variables:
     IMAGE: fedora
   script:
+    - set -x
     - mkdir build-oss-fuzz
     - CC="clang" CXX="clang++" CFLAGS="-fsanitize=address"
       ./scripts/oss-fuzz/build.sh
@@ -520,6 +525,7 @@ build-tci:
   variables:
     IMAGE: debian-all-test-cross
   script:
+    - set -x
     - TARGETS="aarch64 alpha arm hppa m68k microblaze ppc64 s390x x86_64"
     - mkdir build
     - cd build
@@ -580,6 +586,7 @@ build-libvhost-user:
   needs:
     job: amd64-fedora-container
   script:
+    - set -x
     - mkdir subprojects/libvhost-user/build
     - cd subprojects/libvhost-user/build
     - meson
@@ -623,6 +630,7 @@ pages:
   needs:
     - job: build-tools-and-docs-debian
   script:
+    - set -x
     - mkdir -p public
     # HTML-ised source tree
     - make gtags

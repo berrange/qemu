@@ -12,6 +12,7 @@ ubuntu-22.04-aarch64-all-linux-static:
  - if: '$CI_PROJECT_NAMESPACE == "qemu-project" && $CI_COMMIT_BRANCH =~ /^staging/'
  - if: "$AARCH64_RUNNER_AVAILABLE"
  script:
+ - set -x
  - mkdir build
  - cd build
  # Disable -static-pie due to build error with system libc:
@@ -38,6 +39,7 @@ ubuntu-22.04-aarch64-all:
    when: manual
    allow_failure: true
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure
@@ -56,6 +58,7 @@ ubuntu-22.04-aarch64-alldbg:
  - if: '$CI_PROJECT_NAMESPACE == "qemu-project" && $CI_COMMIT_BRANCH =~ /^staging/'
  - if: "$AARCH64_RUNNER_AVAILABLE"
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure --enable-debug
@@ -79,6 +82,7 @@ ubuntu-22.04-aarch64-clang:
    when: manual
    allow_failure: true
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure --disable-libssh --cc=clang-10 --cxx=clang++-10 --enable-sanitizers
@@ -101,6 +105,7 @@ ubuntu-22.04-aarch64-tci:
    when: manual
    allow_failure: true
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure --enable-tcg-interpreter
@@ -121,6 +126,7 @@ ubuntu-22.04-aarch64-notcg:
    when: manual
    allow_failure: true
  script:
+ - set -x
  - mkdir build
  - cd build
  - ../configure --disable-tcg

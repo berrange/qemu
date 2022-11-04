@@ -4,11 +4,13 @@ check-patch:
   image: python:3.10-alpine
   needs: []
   script:
+    - set -x
     - .gitlab-ci.d/check-patch.py
   variables:
     GIT_DEPTH: 1000
     QEMU_JOB_ONLY_FORKS: 1
   before_script:
+    - set -x
     - apk -U add git perl
   allow_failure: true
 
@@ -17,10 +19,13 @@ check-dco:
   stage: build
   image: python:3.10-alpine
   needs: []
-  script: .gitlab-ci.d/check-dco.py
+  script:
+    - set -x
+    - .gitlab-ci.d/check-dco.py
   variables:
     GIT_DEPTH: 1000
   before_script:
+    - set -x
     - apk -U add git
 
 check-python-pipenv:
@@ -28,6 +33,7 @@ check-python-pipenv:
   stage: test
   image: $CI_REGISTRY_IMAGE/qemu/python:latest
   script:
+    - set -x
     - make -C python check-pipenv
   variables:
     GIT_DEPTH: 1
@@ -39,6 +45,7 @@ check-python-tox:
   stage: test
   image: $CI_REGISTRY_IMAGE/qemu/python:latest
   script:
+    - set -x
     - make -C python check-tox
   variables:
     GIT_DEPTH: 1

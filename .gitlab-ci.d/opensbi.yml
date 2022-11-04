@@ -52,8 +52,10 @@ docker-opensbi:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
   before_script:
+    - set -x
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
+    - set -x
     - docker pull $IMAGE_TAG || true
     - docker build --cache-from $IMAGE_TAG --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
                                            --tag $IMAGE_TAG .gitlab-ci.d/opensbi
@@ -76,6 +78,7 @@ build-opensbi:
   variables:
     GIT_DEPTH: 3
   script: # Clone the required submodules and build OpenSBI
+    - set -x
     - git submodule update --init roms/opensbi
     - export JOBS=$(($(getconf _NPROCESSORS_ONLN) + 1))
     - echo "=== Using ${JOBS} simultaneous jobs ==="

@@ -18,6 +18,7 @@
   timeout: 80m
   allow_failure: true
   script:
+    - set -x
     - source .gitlab-ci.d/cirrus/$NAME.vars
     - sed -e "s|[@]CI_REPOSITORY_URL@|$CI_REPOSITORY_URL|g"
           -e "s|[@]CI_COMMIT_REF_NAME@|$CI_COMMIT_REF_NAME|g"
@@ -94,6 +95,7 @@ x64-macos-11-base-build:
   needs: []
   timeout: 80m
   script:
+    - set -x
     - sed -e "s|[@]CI_REPOSITORY_URL@|$CI_REPOSITORY_URL|g"
           -e "s|[@]CI_COMMIT_REF_NAME@|$CI_COMMIT_REF_NAME|g"
           -e "s|[@]CI_COMMIT_SHA@|$CI_COMMIT_SHA|g"
