@@ -173,7 +173,7 @@ static const VMStateDescription vmstate_memhp_state = {
 static bool vmstate_test_use_tco(void *opaque)
 {
     ICH9LPCPMRegs *s = opaque;
-    return s->enable_tco;
+    return true;
 }
 
 static const VMStateDescription vmstate_tco_io_state = {
@@ -316,7 +316,6 @@ void ich9_pm_init(PCIDevice *lpc_pci, ICH9LPCPMRegs *pm,
 
     pm->smm_enabled = smm_enabled;
 
-    pm->enable_tco = true;
     acpi_pm_tco_init(&pm->tco_regs, &pm->io);
 
     if (pm->use_acpi_hotplug_bridge) {
@@ -390,18 +389,6 @@ static void ich9_pm_set_cpu_hotplug_legacy(Object *obj, bool value,
     s->pm.cpu_hotplug_legacy = value;
 }
 
-static bool ich9_pm_get_enable_tco(Object *obj, Error **errp)
-{
-    ICH9LPCState *s = ICH9_LPC_DEVICE(obj);
-    return s->pm.enable_tco;
-}
-
-static void ich9_pm_set_enable_tco(Object *obj, bool value, Error **errp)
-{
-    ICH9LPCState *s = ICH9_LPC_DEVICE(obj);
-    s->pm.enable_tco = value;
-}
-
 static bool ich9_pm_get_acpi_pci_hotplug(Object *obj, Error **errp)
 {
     ICH9LPCState *s = ICH9_LPC_DEVICE(obj);
@@ -460,9 +447,6 @@ void ich9_pm_add_properties(Object *obj, ICH9LPCPMRegs *pm)
                                   &pm->disable_s4, OBJ_PROP_FLAG_READWRITE);
     object_property_add_uint8_ptr(obj, ACPI_PM_PROP_S4_VAL,
                                   &pm->s4_val, OBJ_PROP_FLAG_READWRITE);
-    object_property_add_bool(obj, ACPI_PM_PROP_TCO_ENABLED,
-                             ich9_pm_get_enable_tco,
-                             ich9_pm_set_enable_tco);
     object_property_add_bool(obj, ACPI_PM_PROP_ACPI_PCIHP_BRIDGE,
                              ich9_pm_get_acpi_pci_hotplug,
                              ich9_pm_set_acpi_pci_hotplug);
