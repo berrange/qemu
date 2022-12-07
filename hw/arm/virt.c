@@ -3027,6 +3027,7 @@ static void virt_machine_class_init(ObjectClass *oc, void *data)
     MachineClass *mc = MACHINE_CLASS(oc);
     HotplugHandlerClass *hc = HOTPLUG_HANDLER_CLASS(oc);
     static const char * const valid_cpu_types[] = {
+#if 0 /* Disabled for Red Hat Enterprise Linux */
 #ifdef CONFIG_TCG
         ARM_CPU_TYPE_NAME("cortex-a7"),
         ARM_CPU_TYPE_NAME("cortex-a15"),
@@ -3044,6 +3045,7 @@ static void virt_machine_class_init(ObjectClass *oc, void *data)
 #endif /* CONFIG_TCG */
 #ifdef TARGET_AARCH64
         ARM_CPU_TYPE_NAME("cortex-a53"),
+#endif /* disabled for RHEL */
         ARM_CPU_TYPE_NAME("cortex-a57"),
 #if defined(CONFIG_KVM) || defined(CONFIG_HVF)
         ARM_CPU_TYPE_NAME("host"),

@@ -94,6 +94,7 @@ void aa32_max_features(ARMCPU *cpu)
 
 /* CPU models. These are not needed for the AArch64 linux-user build. */
 #if !defined(CONFIG_USER_ONLY) || !defined(TARGET_AARCH64)
+#if 0 /* Disabled for Red Hat Enterprise Linux */
 
 static void arm926_initfn(Object *obj)
 {
@@ -1021,6 +1022,7 @@ static const ARMCPUInfo arm_tcg_cpus[] = {
     { .name = "any",         .initfn = arm_max_initfn },
 #endif
 };
+#endif /* disabled for RHEL */
 
 static const TypeInfo idau_interface_type_info = {
     .name = TYPE_IDAU_INTERFACE,
@@ -1030,12 +1032,16 @@ static const TypeInfo idau_interface_type_info = {
 
 static void arm_tcg_cpu_register_types(void)
 {
+#if 0 /* Disabled for Red Hat Enterprise Linux */
     size_t i;
+#endif /* disabled for RHEL */
 
     type_register_static(&idau_interface_type_info);
+#if 0 /* Disabled for Red Hat Enterprise Linux */
     for (i = 0; i < ARRAY_SIZE(arm_tcg_cpus); ++i) {
         arm_cpu_register(&arm_tcg_cpus[i]);
     }
+#endif /* disabled for RHEL */
 }
 
 type_init(arm_tcg_cpu_register_types)

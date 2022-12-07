@@ -115,8 +115,9 @@ Requires: %{name}-ui-egl-headless = %{epoch}:%{version}-%{release}     \
 Requires: %{name}-device-display-virtio-gpu = %{epoch}:%{version}-%{release}   \
 %ifarch s390x                                                    \
 Requires: %{name}-device-display-virtio-gpu-ccw = %{epoch}:%{version}-%{release}   \
-%endif                                                            \
+%else                                                            \
 Requires: %{name}-device-display-virtio-gpu-pci = %{epoch}:%{version}-%{release}   \
+%endif                                                           \
 %ifarch x86_64 %{power64}                                        \
 Requires: %{name}-device-display-virtio-vga = %{epoch}:%{version}-%{release}   \
 %endif                                                           \
@@ -452,14 +453,14 @@ Requires: %{name}-common%{?_isa} = %{epoch}:%{version}-%{release}
 Requires: %{name}-device-display-virtio-gpu = %{epoch}:%{version}-%{release}
 %description device-display-virtio-gpu-ccw
 This package provides the virtio-gpu-ccw display device for QEMU.
-%endif
+%else
 %package device-display-virtio-gpu-pci
 Summary: QEMU virtio-gpu-pci display device
 Requires: %{name}-common%{?_isa} = %{epoch}:%{version}-%{release}
 Requires: %{name}-device-display-virtio-gpu = %{epoch}:%{version}-%{release}
 %description device-display-virtio-gpu-pci
 This package provides the virtio-gpu-pci display device for QEMU.
-
+%endif
 
 %ifarch x86_64 %{power64}
 %package device-display-virtio-vga
@@ -646,7 +647,8 @@ ulimit -n 10240
   --disable-xen                    \\\
   --disable-xen-pci-passthrough    \\\
   --disable-xkbcommon              \\\
-  --disable-zstd                   
+  --disable-zstd                   \\\
+  --without-default-devices
 
 
 run_configure() {
@@ -670,6 +672,7 @@ run_configure() {
         --with-coroutine=ucontext \
         --tls-priority=@QEMU,SYSTEM \
         %{disable_everything} \
+        --with-devices-%{kvm_target}=%{kvm_target}-rh-devices \
         "$@"
 
     echo "config-host.mak contents:"
@@ -1186,11 +1189,10 @@ useradd -r -u 107 -g qemu -G kvm -d / -s /sbin/nologin \
 %ifarch s390x
 %files device-display-virtio-gpu-ccw
     %{_libdir}/%{name}/hw-s390x-virtio-gpu-ccw.so
-%endif
-
+%else
 %files device-display-virtio-gpu-pci
-%{_libdir}/%{name}/hw-display-virtio-gpu-pci.so
-
+    %{_libdir}/%{name}/hw-display-virtio-gpu-pci.so
+%endif
 
 %ifarch x86_64 %{power64}
 %files device-display-virtio-vga
