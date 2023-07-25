@@ -71,8 +71,8 @@
   - mkdir build
   - cd build
   - ..\msys64\usr\bin\bash -lc "../configure --enable-fdt=system $CONFIGURE_ARGS"
-  - ..\msys64\usr\bin\bash -lc "make"
-  - ..\msys64\usr\bin\bash -lc "make check MTESTARGS='$TEST_ARGS' || { cat meson-logs/testlog.txt; exit 1; } ;"
+  - ..\msys64\usr\bin\bash -lc "make -j4"
+  - ..\msys64\usr\bin\bash -lc "make -j2 check MTESTARGS='$TEST_ARGS' || { cat meson-logs/testlog.txt; exit 1; } ;"
 
 msys2-64bit:
   extends: .shared_msys2_builder
