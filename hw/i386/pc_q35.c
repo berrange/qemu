@@ -726,6 +726,8 @@ static void pc_q35_machine_rhel940_options(MachineClass *m)
 
     compat_props_add(m->compat_props, hw_compat_rhel_9_6,
                      hw_compat_rhel_9_6_len);
+    compat_props_add(m->compat_props, pc_rhel_9_5_compat,
+		     pc_rhel_9_5_compat_len);
     compat_props_add(m->compat_props, hw_compat_rhel_9_5,
 		     hw_compat_rhel_9_5_len);
 }
