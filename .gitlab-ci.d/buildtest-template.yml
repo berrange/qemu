@@ -26,10 +26,10 @@
       then
         pyvenv/bin/meson configure . -Dbackend_max_links="$LD_JOBS" ;
       fi || exit 1;
-    - make -j"$JOBS"
+    - setarch -R make -j"$JOBS"
     - if test -n "$MAKE_CHECK_ARGS";
       then
-        make -j"$JOBS" $MAKE_CHECK_ARGS ;
+        setarch -R make -j"$JOBS" $MAKE_CHECK_ARGS ;
       fi
     - ccache --show-stats
 
