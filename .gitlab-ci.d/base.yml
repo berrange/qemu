@@ -20,6 +20,9 @@ variables:
 # we must override QEMU_CI_CONTAINER_TAG
 #
 .base_job_template:
+  tags:
+    - saas-linux-small-amd64
+
   variables:
     # Each script line from will be in a collapsible section in the job output
     # and show the duration of each line.
