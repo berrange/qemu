@@ -568,6 +568,8 @@ avocado-cfi-x86_64:
 
 tsan-build:
   extends: .native_build_job_template
+  tags:
+    - saas-linux-medium-amd64
   needs:
     job: amd64-ubuntu2204-container
   variables:
