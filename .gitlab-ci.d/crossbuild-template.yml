@@ -1,5 +1,7 @@
 .cross_system_build_job:
   extends: .base_job_template
+  tags:
+    - $QEMU_CI_VM_BIG
   stage: build
   image: $CI_REGISTRY_IMAGE/qemu/$IMAGE:$QEMU_CI_CONTAINER_TAG
   cache:
@@ -37,6 +39,8 @@
 # $EXTRA_CONFIGURE_OPTS variable.
 .cross_accel_build_job:
   extends: .base_job_template
+  tags:
+    - $QEMU_CI_VM_BIG
   stage: build
   image: $CI_REGISTRY_IMAGE/qemu/$IMAGE:$QEMU_CI_CONTAINER_TAG
   timeout: 30m
@@ -57,6 +61,8 @@
 
 .cross_user_build_job:
   extends: .base_job_template
+  tags:
+    - $QEMU_CI_VM_BIG
   stage: build
   image: $CI_REGISTRY_IMAGE/qemu/$IMAGE:$QEMU_CI_CONTAINER_TAG
   cache:

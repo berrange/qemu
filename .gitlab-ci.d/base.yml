@@ -10,6 +10,10 @@ variables:
   # to point to a fork repo
   QEMU_CI_UPSTREAM: qemu-project
 
+  # Tag of the "bigger" runners, to be used only by jobs which will
+  # benefit from extra parallelism. ie builds, but not contaniers
+  QEMU_CI_VM_BIG: saas-linux-medium-amd64
+
 # The order of rules defined here is critically important.
 # They are evaluated in order and first match wins.
 #

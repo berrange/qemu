@@ -1,5 +1,7 @@
 .native_build_job_template:
   extends: .base_job_template
+  tags:
+    - $QEMU_CI_VM_BIG
   stage: build
   image: $CI_REGISTRY_IMAGE/qemu/$IMAGE:$QEMU_CI_CONTAINER_TAG
   cache:
@@ -52,6 +54,8 @@
 
 .common_test_job_template:
   extends: .base_job_template
+  tags:
+    - $QEMU_CI_VM_BIG
   stage: test
   image: $CI_REGISTRY_IMAGE/qemu/$IMAGE:$QEMU_CI_CONTAINER_TAG
   script:
