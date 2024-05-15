@@ -308,6 +308,13 @@ const size_t hw_compat_2_1_len = G_N_ELEMENTS(hw_compat_2_1);
 const char *rhel_old_machine_deprecation =
     "machine types for previous major releases are deprecated";
 
+GlobalProperty hw_compat_rhel_9_6[] = {
+  /* hw_compat_rhel_9_6 from hw_compat_9_0 */
+    {"arm-cpu", "backcompat-cntfrq", "true" },
+};
+const size_t hw_compat_rhel_9_6_len = G_N_ELEMENTS(hw_compat_rhel_9_6);
+
+
 GlobalProperty hw_compat_rhel_9_5[] = {
   /* hw_compat_rhel_9_5 from hw_compat_8_2 */
     { "migration", "zero-page-detection", "legacy"},

@@ -3572,6 +3572,7 @@ DEFINE_VIRT_MACHINE(2, 6)
 
 static void rhel940_virt_options(MachineClass *mc)
 {
+    compat_props_add(mc->compat_props, hw_compat_rhel_9_6, hw_compat_rhel_9_6_len);
     compat_props_add(mc->compat_props, hw_compat_rhel_9_5, hw_compat_rhel_9_5_len);
 }
 DEFINE_VIRT_MACHINE_AS_LATEST(9, 4, 0)

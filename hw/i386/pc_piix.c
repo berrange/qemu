@@ -919,6 +919,8 @@ static void pc_machine_rhel760_options(MachineClass *m)
     object_class_property_set_description(oc, "x-south-bridge",
                                      "Use a different south bridge than PIIX3");
 
+    compat_props_add(m->compat_props, hw_compat_rhel_9_6,
+                     hw_compat_rhel_9_6_len);
     compat_props_add(m->compat_props, hw_compat_rhel_9_5,
 		     hw_compat_rhel_9_5_len);
     compat_props_add(m->compat_props, hw_compat_rhel_9_4,
