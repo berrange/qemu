@@ -6,7 +6,7 @@
     entrypoint: [""]
   variables:
     DOCKERFILE: "$CI_PROJECT_DIR/tests/docker/dockerfiles/$NAME.docker"
-    CACHE_REPO: "$CI_REGISTRY/qemu-project/qemu/qemu/$NAME-cache"
+    CACHE_REPO: "$CI_REGISTRY/berrange/qemu/qemu/$NAME-cache"
   before_script:
     - export TAG="$CI_REGISTRY_IMAGE/qemu/$NAME:$QEMU_CI_CONTAINER_TAG"
   script:
