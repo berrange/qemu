@@ -18,6 +18,7 @@ exec "$@"\n' > /usr/bin/nosync && \
     chmod +x /usr/bin/nosync && \
     nosync dnf update -y && \
     nosync dnf install -y \
+    alsa-lib-devel \
                bash \
                bc \
                bison \
