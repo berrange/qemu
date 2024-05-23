@@ -88,6 +88,7 @@ struct GAConfig {
     GList *allowedrpcs;
     bool only_confidential;
     bool no_unrestricted;
+    bool no_user_auth;
     int daemonize;
     GLogLevelFlags log_level;
     int dumpconf;
@@ -437,6 +438,16 @@ static bool ga_command_is_allowed(const QmpCommand *cmd, GAState *state)
      */
     if (config->no_unrestricted &&
         qmp_command_has_feature(cmd, QAPI_FEATURE_UNRESTRICTED)) {
+        allowed = false;
+    }
+
+    /*
+     * If user auth commands are not allowed that sets
+     * a new default, but an explicit allow/block list can
+     * override
+     */
+    if (config->no_user_auth &&
+        qmp_command_has_feature(cmd, QAPI_FEATURE_USER_AUTH)) {
         allowed = false;
     }
 
@@ -1209,6 +1220,7 @@ static void config_parse(GAConfig *config, int argc, char **argv)
         { "retry-path", 0, NULL, 'r' },
         { "confidential", 0, NULL, 'i' },
         { "no-unrestricted", 0, NULL, 'u' },
+        { "no-user-auth", 0, NULL, 'e' },
         { NULL, 0, NULL, 0 }
     };
     g_autofree char *confpath = g_strdup(g_getenv("QGA_CONF")) ?:
@@ -1328,6 +1340,9 @@ static void config_parse(GAConfig *config, int argc, char **argv)
             break;
         case 'u':
             config->no_unrestricted = true;
+            break;
+        case 'e':
+            config->no_user_auth = true;
             break;
         case 'h':
             usage(argv[0]);
