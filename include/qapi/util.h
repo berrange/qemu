@@ -14,6 +14,8 @@
 typedef enum {
     QAPI_FEATURE_DEPRECATED,
     QAPI_FEATURE_UNSTABLE,
+
+    QAPI_FEATURE_BUILT_IN_LAST,
 } QapiSpecialFeature;
 
 typedef struct QEnumLookup {

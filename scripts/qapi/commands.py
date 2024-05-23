@@ -347,7 +347,27 @@ class QAPISchemaGenCommandVisitor(QAPISchemaModularCVisitor):
         self._add_module('./init', ' * QAPI Commands initialization')
         self._genh.add(mcgen('''
 #include "qapi/qmp/dispatch.h"
+'''))
 
+        features = schema._custom_special_features['command']
+        if len(features) > 0:
+            self._genh.add(mcgen('''
+
+typedef enum {
+'''))
+            suffix = " = QAPI_FEATURE_BUILT_IN_LAST"
+            for f in features:
+                self._genh.add(mcgen('''
+    QAPI_FEATURE_%(name)s%(suffix)s,
+''', suffix=suffix, name=f.upper().replace('-', '_')))
+                suffix = ""
+
+            self._genh.add(mcgen('''
+} QapiSpecialFeatureCustom;
+
+'''))
+
+        self._genh.add(mcgen('''
 void %(c_prefix)sqmp_init_marshal(QmpCommandList *cmds);
 ''',
                              c_prefix=c_name(self._prefix, protect=False)))
