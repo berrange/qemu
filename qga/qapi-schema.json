@@ -42,7 +42,10 @@
         'fs-frozen',
         # Commands which do not violate privacy
         # of a confidential guest
-        'confidential'
+        'confidential',
+        # Commands which allow unrestricted access to or
+        # modification of guest files or execute arbitrary commands
+        'unrestricted'
     ] } }
 
 ##
