@@ -128,17 +128,6 @@ struct GAState {
 struct GAState *ga_state;
 QmpCommandList ga_commands;
 
-/* commands that are safe to issue while filesystems are frozen */
-static const char *ga_freeze_allowlist[] = {
-    "guest-ping",
-    "guest-info",
-    "guest-sync",
-    "guest-sync-delimited",
-    "guest-fsfreeze-status",
-    "guest-fsfreeze-thaw",
-    NULL
-};
-
 #ifdef _WIN32
 DWORD WINAPI service_ctrl_handler(DWORD ctrl, DWORD type, LPVOID data,
                                   LPVOID ctx);
@@ -421,7 +410,6 @@ static gint ga_strcmp(gconstpointer str1, gconstpointer str2)
 
 static bool ga_command_is_allowed(const QmpCommand *cmd, GAState *state)
 {
-    int i = 0;
     GAConfig *config = state->config;
     const char *name = qmp_command_name(cmd);
     /* Fallback policy is allow everything */
@@ -453,15 +441,9 @@ static bool ga_command_is_allowed(const QmpCommand *cmd, GAState *state)
      * If frozen, this filtering must take priority over
      * absolutely everything
      */
-    if (state->frozen) {
+    if (state->frozen &&
+        !qmp_command_has_feature(cmd, QAPI_FEATURE_FS_FROZEN)) {
         allowed = false;
-
-        while (ga_freeze_allowlist[i] != NULL) {
-            if (strcmp(name, ga_freeze_allowlist[i]) == 0) {
-                allowed = true;
-            }
-            i++;
-        }
     }
 
     return allowed;
