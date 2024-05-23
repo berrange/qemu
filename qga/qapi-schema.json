@@ -45,7 +45,10 @@
         'confidential',
         # Commands which allow unrestricted access to or
         # modification of guest files or execute arbitrary commands
-        'unrestricted'
+        'unrestricted',
+        # Commands which allow changes to user account
+        # authentication credentials (keys, passwords)
+        'user-auth'
     ] } }
 
 ##
