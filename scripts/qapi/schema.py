@@ -933,8 +933,18 @@ class QAPISchemaEnumMember(QAPISchemaMember):
 class QAPISchemaFeature(QAPISchemaMember):
     role = 'feature'
 
+    def __init__(
+        self,
+        name: str,
+        info: Optional[QAPISourceInfo],
+        ifcond: Optional[QAPISchemaIfCond] = None,
+        special: bool = False,
+    ):
+        super().__init__(name, info, ifcond)
+        self.special = special
+
     def is_special(self) -> bool:
-        return self.name in ('deprecated', 'unstable')
+        return self.special
 
 
 class QAPISchemaObjectTypeMember(QAPISchemaMember):
@@ -1144,6 +1154,9 @@ class QAPISchema:
         self._predefining = True
         self._def_predefineds()
         self._predefining = False
+        self._custom_special_features: Dict[str, List[str]] = {
+            'command': parser.info.pragma.command_features
+        }
         self._def_exprs(exprs)
         self.check()
 
@@ -1255,12 +1268,21 @@ class QAPISchema:
         self,
         features: Optional[List[Dict[str, Any]]],
         info: Optional[QAPISourceInfo],
+        custom_special_features: Optional[List[str]] = [],
     ) -> List[QAPISchemaFeature]:
         if features is None:
             return []
-        return [QAPISchemaFeature(f['name'], info,
-                                  QAPISchemaIfCond(f.get('if')))
-                for f in features]
+        ret = []
+        for f in features:
+            name = f['name']
+            special = name in ["unstable", "deprecated"]
+            if custom_special_features is not None:
+                if name in custom_special_features:
+                    special = True
+            ret.append(QAPISchemaFeature(name, info,
+                                         QAPISchemaIfCond(f.get('if')),
+                                         special))
+        return ret
 
     def _make_enum_member(
         self,
@@ -1430,7 +1452,8 @@ class QAPISchema:
         coroutine = expr.get('coroutine', False)
         ifcond = QAPISchemaIfCond(expr.get('if'))
         info = expr.info
-        features = self._make_features(expr.get('features'), info)
+        features = self._make_features(expr.get('features'), info,
+                                       self._custom_special_features['command'])
         if isinstance(data, OrderedDict):
             data = self._make_implicit_object_type(
                 name, info, ifcond,
