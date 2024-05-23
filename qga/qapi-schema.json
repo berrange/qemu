@@ -36,7 +36,11 @@
         'guest-sync-delimited' ],
     # Types and commands with undocumented members:
     'documentation-exceptions': [
-        'GuestNVMeSmart' ] } }
+        'GuestNVMeSmart' ],
+    'command-features': [
+        # Commands permitted while FS are frozen
+        'fs-frozen'
+    ] } }
 
 ##
 # @guest-sync-delimited:
@@ -67,11 +71,16 @@
 #
 # Returns: The unique integer id passed in by the client
 #
+# Features:
+#
+# @fs-frozen: permitted to execute when filesystems are frozen
+#
 # Since: 1.1
 ##
 { 'command': 'guest-sync-delimited',
   'data':    { 'id': 'int' },
-  'returns': 'int' }
+  'returns': 'int',
+  'features': [ 'fs-frozen'] }
 
 ##
 # @guest-sync:
@@ -104,20 +113,30 @@
 #
 # Returns: The unique integer id passed in by the client
 #
+# Features:
+#
+# @fs-frozen: permitted to execute when filesystems are frozen
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-sync',
   'data':    { 'id': 'int' },
-  'returns': 'int' }
+  'returns': 'int',
+  'features': [ 'fs-frozen'] }
 
 ##
 # @guest-ping:
 #
 # Ping the guest agent, a non-error return implies success
 #
+# Features:
+#
+# @fs-frozen: permitted to execute when filesystems are frozen
+#
 # Since: 0.15.0
 ##
-{ 'command': 'guest-ping' }
+{ 'command': 'guest-ping',
+  'features': [ 'fs-frozen'] }
 
 ##
 # @guest-get-time:
@@ -196,10 +215,15 @@
 #
 # Returns: @GuestAgentInfo
 #
+# Features:
+#
+# @fs-frozen: permitted when filesystems are frozen
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-info',
-  'returns': 'GuestAgentInfo' }
+  'returns': 'GuestAgentInfo',
+  'features': [ 'fs-frozen'] }
 
 ##
 # @guest-shutdown:
@@ -427,10 +451,15 @@
 #    result of some other guest processes having issued an fs
 #    freeze/thaw.
 #
+# Features:
+#
+# @fs-frozen: permitted when filesystems are frozen
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-fsfreeze-status',
   'returns': 'GuestFsfreezeStatus',
+  'features': [ 'fs-frozen'],
   'if': { 'any': ['CONFIG_WIN32', 'CONFIG_FSFREEZE'] } }
 
 ##
@@ -489,10 +518,15 @@
 #    were unfrozen before this call, and that the filesystem state may
 #    have changed before issuing this command.
 #
+# Features:
+#
+# @fs-frozen: permitted when filesystems are frozen
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-fsfreeze-thaw',
   'returns': 'int',
+  'features': [ 'fs-frozen'],
   'if': { 'any': ['CONFIG_WIN32', 'CONFIG_FSFREEZE'] } }
 
 ##
