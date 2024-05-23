@@ -28,6 +28,8 @@ class QAPISchemaPragma:
         self.documentation_exceptions: List[str] = []
         # Types whose member names may violate case conventions
         self.member_name_exceptions: List[str] = []
+        # Arbitrary extra features recorded against commands
+        self.command_features: List[str] = []
 
 
 class QAPISourceInfo:

@@ -243,6 +243,8 @@ class QAPISchemaParser:
             pragma.documentation_exceptions = check_list_str(name, value)
         elif name == 'member-name-exceptions':
             pragma.member_name_exceptions = check_list_str(name, value)
+        elif name == 'command-features':
+            pragma.command_features = check_list_str(name, value)
         else:
             raise QAPISemError(info, "unknown pragma '%s'" % name)
 
