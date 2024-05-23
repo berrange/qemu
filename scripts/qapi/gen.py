@@ -41,7 +41,7 @@ from .source import QAPISourceInfo
 
 
 def gen_special_features(features: Sequence[QAPISchemaFeature]) -> str:
-    special_features = [f"1u << QAPI_FEATURE_{feat.name.upper()}"
+    special_features = [f"1u << QAPI_FEATURE_{feat.name.upper().replace('-','_')}"
                         for feat in features if feat.is_special()]
     return ' | '.join(special_features) or '0'
 
