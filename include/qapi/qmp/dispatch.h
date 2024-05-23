@@ -51,6 +51,7 @@ void qmp_disable_command(QmpCommandList *cmds, const char *name,
 void qmp_enable_command(QmpCommandList *cmds, const char *name);
 
 bool qmp_command_is_enabled(const QmpCommand *cmd);
+bool qmp_command_has_feature(const QmpCommand *cmd, unsigned feature);
 bool qmp_command_available(const QmpCommand *cmd, Error **errp);
 const char *qmp_command_name(const QmpCommand *cmd);
 bool qmp_has_success_response(const QmpCommand *cmd);

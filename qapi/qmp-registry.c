@@ -74,6 +74,11 @@ bool qmp_command_is_enabled(const QmpCommand *cmd)
     return cmd->enabled;
 }
 
+bool qmp_command_has_feature(const QmpCommand *cmd, unsigned feature)
+{
+    return cmd->special_features & feature;
+}
+
 const char *qmp_command_name(const QmpCommand *cmd)
 {
     return cmd->name;
