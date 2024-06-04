@@ -78,12 +78,14 @@
 #
 # @fs-frozen: permitted to execute when filesystems are frozen
 #
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 1.1
 ##
 { 'command': 'guest-sync-delimited',
   'data':    { 'id': 'int' },
   'returns': 'int',
-  'features': [ 'fs-frozen'] }
+  'features': [ 'fs-frozen', 'confidential' ] }
 
 ##
 # @guest-sync:
@@ -120,12 +122,14 @@
 #
 # @fs-frozen: permitted to execute when filesystems are frozen
 #
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-sync',
   'data':    { 'id': 'int' },
   'returns': 'int',
-  'features': [ 'fs-frozen'] }
+  'features': [ 'fs-frozen', 'confidential' ] }
 
 ##
 # @guest-ping:
@@ -136,10 +140,12 @@
 #
 # @fs-frozen: permitted to execute when filesystems are frozen
 #
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-ping',
-  'features': [ 'fs-frozen'] }
+  'features': [ 'fs-frozen', 'confidential' ] }
 
 ##
 # @guest-get-time:
@@ -149,10 +155,15 @@
 #
 # Returns: Time in nanoseconds.
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 1.5
 ##
 { 'command': 'guest-get-time',
-  'returns': 'int' }
+  'returns': 'int',
+  'features': [ 'confidential' ] }
 
 ##
 # @guest-set-time:
@@ -175,10 +186,15 @@
 # @time: time of nanoseconds, relative to the Epoch of 1970-01-01 in
 #     UTC.
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 1.5
 ##
 { 'command': 'guest-set-time',
-  'data': { '*time': 'int' } }
+  'data': { '*time': 'int' },
+  'features': [ 'confidential' ] }
 
 ##
 # @GuestAgentCommandInfo:
@@ -222,11 +238,13 @@
 #
 # @fs-frozen: permitted when filesystems are frozen
 #
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-info',
   'returns': 'GuestAgentInfo',
-  'features': [ 'fs-frozen'] }
+  'features': [ 'fs-frozen', 'confidential' ] }
 
 ##
 # @guest-shutdown:
@@ -241,10 +259,15 @@
 # when running with --no-shutdown, by issuing the query-status QMP
 # command to confirm the VM status is "shutdown".
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-shutdown', 'data': { '*mode': 'str' },
-  'success-response': false }
+  'success-response': false,
+  'features': [ 'confidential' ] }
 
 ##
 # @guest-file-open:
@@ -457,11 +480,13 @@
 #
 # @fs-frozen: permitted when filesystems are frozen
 #
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-fsfreeze-status',
   'returns': 'GuestFsfreezeStatus',
-  'features': [ 'fs-frozen'],
+  'features': [ 'fs-frozen', 'confidential' ],
   'if': { 'any': ['CONFIG_WIN32', 'CONFIG_FSFREEZE'] } }
 
 ##
@@ -481,10 +506,15 @@
 #     Volume Shadow-copy Service DLL helper.  The frozen state is
 #     limited for up to 10 seconds by VSS.
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-fsfreeze-freeze',
   'returns': 'int',
+  'features': [ 'confidential' ],
   'if': { 'any': ['CONFIG_WIN32', 'CONFIG_FSFREEZE'] } }
 
 ##
@@ -501,11 +531,16 @@
 #
 # Returns: Number of file systems currently frozen.
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 2.2
 ##
 { 'command': 'guest-fsfreeze-freeze-list',
   'data':    { '*mountpoints': ['str'] },
   'returns': 'int',
+  'features': [ 'confidential' ],
   'if': { 'any': ['CONFIG_WIN32', 'CONFIG_FSFREEZE'] } }
 
 ##
@@ -524,11 +559,13 @@
 #
 # @fs-frozen: permitted when filesystems are frozen
 #
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-fsfreeze-thaw',
   'returns': 'int',
-  'features': [ 'fs-frozen'],
+  'features': [ 'fs-frozen', 'confidential' ],
   'if': { 'any': ['CONFIG_WIN32', 'CONFIG_FSFREEZE'] } }
 
 ##
@@ -576,11 +613,16 @@
 # Returns: A @GuestFilesystemTrimResponse which contains the status of
 #     all trimmed paths.  (since 2.4)
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 1.2
 ##
 { 'command': 'guest-fstrim',
   'data': { '*minimum': 'int' },
   'returns': 'GuestFilesystemTrimResponse',
+  'features': [ 'confidential' ],
   'if': { 'any': ['CONFIG_WIN32', 'CONFIG_FSTRIM'] } }
 
 ##
@@ -608,9 +650,14 @@
 # Notes: It's strongly recommended to issue the guest-sync command
 #     before sending commands when the guest resumes
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 1.1
 ##
 { 'command': 'guest-suspend-disk', 'success-response': false,
+  'features': [ 'confidential' ],
   'if': { 'any': ['CONFIG_LINUX', 'CONFIG_WIN32'] } }
 
 ##
@@ -645,9 +692,14 @@
 # Notes: It's strongly recommended to issue the guest-sync command
 #     before sending commands when the guest resumes
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 1.1
 ##
 { 'command': 'guest-suspend-ram', 'success-response': false,
+  'features': [ 'confidential' ],
   'if': { 'any': ['CONFIG_LINUX', 'CONFIG_WIN32'] } }
 
 ##
@@ -681,9 +733,14 @@
 # Notes: It's strongly recommended to issue the guest-sync command
 #     before sending commands when the guest resumes
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 1.1
 ##
 { 'command': 'guest-suspend-hybrid', 'success-response': false,
+  'features': [ 'confidential' ],
   'if': 'CONFIG_LINUX' }
 
 ##
@@ -815,10 +872,15 @@
 # Returns: The list of all VCPUs the guest knows about.  Each VCPU is
 #     put on the list exactly once, but their order is unspecified.
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 1.5
 ##
 { 'command': 'guest-get-vcpus',
   'returns': ['GuestLogicalProcessor'],
+  'features': [ 'confidential' ],
   'if': { 'any': ['CONFIG_LINUX', 'CONFIG_WIN32'] } }
 
 ##
@@ -857,11 +919,16 @@
 #     - If the reconfiguration of the first node in @vcpus failed.
 #       Guest state has not been changed.
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 1.5
 ##
 { 'command': 'guest-set-vcpus',
   'data':    {'vcpus': ['GuestLogicalProcessor'] },
   'returns': 'int',
+  'features': [ 'confidential' ],
   'if': 'CONFIG_LINUX' }
 
 ##
@@ -1180,10 +1247,15 @@
 #     memory block is put on the list exactly once, but their order is
 #     unspecified.
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 2.3
 ##
 { 'command': 'guest-get-memory-blocks',
   'returns': ['GuestMemoryBlock'],
+  'features': [ 'confidential' ],
   'if': 'CONFIG_LINUX' }
 
 ##
@@ -1254,11 +1326,16 @@
 #     empty on input, or there is an error, and in this case, guest
 #     state will not be changed.
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 2.3
 ##
 { 'command': 'guest-set-memory-blocks',
   'data':    {'mem-blks': ['GuestMemoryBlock'] },
   'returns': ['GuestMemoryBlockResponse'],
+  'features': [ 'confidential' ],
   'if': 'CONFIG_LINUX' }
 
 ##
@@ -1268,10 +1345,15 @@
 #     minimal units of memory block online/offline operations (also
 #     called Logical Memory Hotplug).
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 2.3
 ##
 { 'struct': 'GuestMemoryBlockInfo',
   'data': {'size': 'uint64'},
+  'features': [ 'confidential' ],
   'if': 'CONFIG_LINUX' }
 
 ##
@@ -1281,10 +1363,15 @@
 #
 # Returns: @GuestMemoryBlockInfo
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 2.3
 ##
 { 'command': 'guest-get-memory-block-info',
   'returns': 'GuestMemoryBlockInfo',
+  'features': [ 'confidential' ],
   'if': 'CONFIG_LINUX' }
 
 ##
@@ -1430,10 +1517,15 @@
 #
 # Returns: the host name of the machine
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 2.10
 ##
 { 'command': 'guest-get-host-name',
-  'returns': 'GuestHostName' }
+  'returns': 'GuestHostName',
+  'features': [ 'confidential' ] }
 
 
 ##
@@ -1882,9 +1974,14 @@
 #
 # Returns: List of CPU stats of guest.
 #
+# Features:
+#
+# @confidential: permitted when running inside a confidential VM
+#
 # Since: 7.1
 ##
 { 'command': 'guest-get-cpustats',
   'returns': ['GuestCpuStats'],
+  'features': [ 'confidential' ],
   'if': 'CONFIG_LINUX'
 }
