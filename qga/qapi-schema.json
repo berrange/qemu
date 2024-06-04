@@ -1454,11 +1454,17 @@
 #
 # Returns: GuestExecStatus
 #
+# Features:
+#
+# @unrestricted: not permitted if agent disables unrestricted
+#                resource access mode
+#
 # Since: 2.5
 ##
 { 'command': 'guest-exec-status',
   'data':    { 'pid': 'int' },
-  'returns': 'GuestExecStatus' }
+  'returns': 'GuestExecStatus',
+  'features': [ 'unrestricted' ] }
 
 ##
 # @GuestExec:
@@ -1527,12 +1533,18 @@
 #
 # Returns: PID
 #
+# Features:
+#
+# @unrestricted: not permitted if agent disables unrestricted
+#                resource access mode
+#
 # Since: 2.5
 ##
 { 'command': 'guest-exec',
   'data':    { 'path': 'str', '*arg': ['str'], '*env': ['str'],
                '*input-data': 'str', '*capture-output': 'GuestExecCaptureOutput' },
-  'returns': 'GuestExec' }
+  'returns': 'GuestExec',
+  'features': [ 'unrestricted' ] }
 
 
 ##
