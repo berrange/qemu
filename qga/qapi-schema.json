@@ -283,11 +283,17 @@
 #
 # Returns: Guest file handle
 #
+# Features:
+#
+# @unrestricted: not permitted if agent disables unrestricted
+#                resource access mode
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-file-open',
   'data':    { 'path': 'str', '*mode': 'str' },
-  'returns': 'int' }
+  'returns': 'int',
+  'features': [ 'unrestricted' ] }
 
 ##
 # @guest-file-close:
@@ -296,10 +302,16 @@
 #
 # @handle: filehandle returned by guest-file-open
 #
+# Features:
+#
+# @unrestricted: not permitted if agent disables unrestricted
+#                resource access mode
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-file-close',
-  'data': { 'handle': 'int' } }
+  'data': { 'handle': 'int' },
+  'features': [ 'unrestricted' ] }
 
 ##
 # @GuestFileRead:
@@ -332,11 +344,17 @@
 #
 # Returns: @GuestFileRead
 #
+# Features:
+#
+# @unrestricted: not permitted if agent disables unrestricted
+#                resource access mode
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-file-read',
   'data':    { 'handle': 'int', '*count': 'int' },
-  'returns': 'GuestFileRead' }
+  'returns': 'GuestFileRead',
+  'features': [ 'unrestricted' ] }
 
 ##
 # @GuestFileWrite:
@@ -367,11 +385,17 @@
 #
 # Returns: @GuestFileWrite
 #
+# Features:
+#
+# @unrestricted: not permitted if agent disables unrestricted
+#                resource access mode
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-file-write',
   'data':    { 'handle': 'int', 'buf-b64': 'str', '*count': 'int' },
-  'returns': 'GuestFileWrite' }
+  'returns': 'GuestFileWrite',
+  'features': [ 'unrestricted' ] }
 
 
 ##
@@ -434,12 +458,18 @@
 #
 # Returns: @GuestFileSeek
 #
+# Features:
+#
+# @unrestricted: not permitted if agent disables unrestricted
+#                resource access mode
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-file-seek',
   'data':    { 'handle': 'int', 'offset': 'int',
                'whence': 'GuestFileWhence' },
-  'returns': 'GuestFileSeek' }
+  'returns': 'GuestFileSeek',
+  'features': [ 'unrestricted' ] }
 
 ##
 # @guest-file-flush:
@@ -448,10 +478,16 @@
 #
 # @handle: filehandle returned by guest-file-open
 #
+# Features:
+#
+# @unrestricted: not permitted if agent disables unrestricted
+#                resource access mode
+#
 # Since: 0.15.0
 ##
 { 'command': 'guest-file-flush',
-  'data': { 'handle': 'int' } }
+  'data': { 'handle': 'int' },
+  'features': [ 'unrestricted' ] }
 
 ##
 # @GuestFsfreezeStatus:
