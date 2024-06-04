@@ -86,6 +86,7 @@ struct GAConfig {
     gchar *aliststr; /* allowedrpcs may point to this string */
     GList *blockedrpcs;
     GList *allowedrpcs;
+    bool only_confidential;
     int daemonize;
     GLogLevelFlags log_level;
     int dumpconf;
@@ -414,6 +415,15 @@ static bool ga_command_is_allowed(const QmpCommand *cmd, GAState *state)
     const char *name = qmp_command_name(cmd);
     /* Fallback policy is allow everything */
     bool allowed = true;
+
+    /*
+     * If running in confidential mode, block commands that
+     * would violate guest data privacy
+     */
+    if (config->only_confidential &&
+        !qmp_command_has_feature(cmd, QAPI_FEATURE_CONFIDENTIAL)) {
+        allowed = false;
+    }
 
     if (config->allowedrpcs) {
         /*
@@ -1197,6 +1207,7 @@ static void config_parse(GAConfig *config, int argc, char **argv)
 #endif
         { "statedir", 1, NULL, 't' },
         { "retry-path", 0, NULL, 'r' },
+        { "confidential", 0, NULL, 'i' },
         { NULL, 0, NULL, 0 }
     };
 
@@ -1293,6 +1304,9 @@ static void config_parse(GAConfig *config, int argc, char **argv)
             }
             break;
 #endif
+        case 'i':
+            config->only_confidential = true;
+            break;
         case 'h':
             usage(argv[0]);
             exit(EXIT_SUCCESS);

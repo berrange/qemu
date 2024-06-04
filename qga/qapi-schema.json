@@ -39,7 +39,10 @@
         'GuestNVMeSmart' ],
     'command-features': [
         # Commands permitted while FS are frozen
-        'fs-frozen'
+        'fs-frozen',
+        # Commands which do not violate privacy
+        # of a confidential guest
+        'confidential'
     ] } }
 
 ##
