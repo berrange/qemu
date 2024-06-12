@@ -297,9 +297,11 @@ GlobalProperty pc_rhel_compat[] = {
 };
 const size_t pc_rhel_compat_len = G_N_ELEMENTS(pc_rhel_compat);
 
-GlobalProperty pc_compat_rhel_9_5[] = {
+GlobalProperty pc_rhel_9_5_compat[] = {
+    /* pc_rhel_9_5_compat from pc_compat_pc_9_0 (backported from 9.1) */
+    { TYPE_X86_CPU, "guest-phys-bits", "0" },
 };
-const size_t pc_compat_rhel_9_5_len = G_N_ELEMENTS(pc_compat_rhel_9_5);
+const size_t pc_rhel_9_5_compat_len = G_N_ELEMENTS(pc_rhel_9_5_compat);
 
 GlobalProperty pc_rhel_9_3_compat[] = {
     /* pc_rhel_9_3_compat from pc_compat_8_0 */
