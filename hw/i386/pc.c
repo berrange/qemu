@@ -300,6 +300,7 @@ const size_t pc_rhel_compat_len = G_N_ELEMENTS(pc_rhel_compat);
 GlobalProperty pc_rhel_9_5_compat[] = {
     /* pc_rhel_9_5_compat from pc_compat_pc_9_0 (backported from 9.1) */
     { TYPE_X86_CPU, "guest-phys-bits", "0" },
+    { "sev-guest", "legacy-vm-type", "true" },
 };
 const size_t pc_rhel_9_5_compat_len = G_N_ELEMENTS(pc_rhel_9_5_compat);
 
