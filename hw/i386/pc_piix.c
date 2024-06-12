@@ -879,6 +879,7 @@ static void pc_machine_rhel7_options(MachineClass *m)
     m->alias = "pc";
     m->is_default = 1;
     m->smp_props.prefer_sockets = true;
+    pcmc->isa_bios_alias = false;
 }
 
 static void pc_init_rhel760(MachineState *machine)
