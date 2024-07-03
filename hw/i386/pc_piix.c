@@ -452,6 +452,7 @@ static void pc_xen_hvm_init(MachineState *machine)
     } \
     DEFINE_PC_MACHINE(suffix, name, pc_init_##suffix, optionfn)
 
+#if 0 /* Disabled for Red Hat Enterprise Linux */
 static void pc_i440fx_machine_options(MachineClass *m)
 {
     PCMachineClass *pcmc = PC_MACHINE_CLASS(m);
@@ -807,6 +808,7 @@ static void pc_i440fx_2_4_machine_options(MachineClass *m)
 
 DEFINE_I440FX_MACHINE(v2_4, "pc-i440fx-2.4",
                       pc_i440fx_2_4_machine_options)
+#endif /* Disabled for Red Hat Enterprise Linux */
 
 #ifdef CONFIG_ISAPC
 static void isapc_machine_options(MachineClass *m)
