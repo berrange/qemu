@@ -646,7 +646,6 @@ warn_flags = [
   '-Wno-string-plus-int',
   '-Wno-tautological-type-limit-compare',
   '-Wno-typedef-redefinition',
-  '-Wno-unused-function',
 ]
 
 if host_os != 'darwin'
