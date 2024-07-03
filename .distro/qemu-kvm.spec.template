@@ -673,6 +673,7 @@ run_configure() {
         --tls-priority=@QEMU,SYSTEM \
         %{disable_everything} \
         --with-devices-%{kvm_target}=%{kvm_target}-rh-devices \
+	--rhel-version=%%RHEL_VERSION%% \
         "$@"
 
     echo "config-host.mak contents:"
