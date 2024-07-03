@@ -2395,9 +2395,13 @@ static const CPUCaches epyc_genoa_cache_info = {
  *  PT in VMX operation
  */
 
+#define RHEL_CPU_DEPRECATION \
+    "use at least 'Nehalem' / 'Opteron_G4', or 'host' / 'max'"
+
 static const X86CPUDefinition builtin_x86_defs[] = {
     {
         .name = "qemu64",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 0xd,
         .vendor = CPUID_VENDOR_AMD,
         .family = 15,
@@ -2418,6 +2422,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "phenom",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 5,
         .vendor = CPUID_VENDOR_AMD,
         .family = 16,
@@ -2450,6 +2455,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "core2duo",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 10,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
@@ -2492,6 +2498,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "kvm64",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 0xd,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 15,
@@ -2533,6 +2540,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "qemu32",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 4,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
@@ -2547,6 +2555,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "kvm32",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 5,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 15,
@@ -2577,6 +2586,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "coreduo",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 10,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
@@ -2610,6 +2620,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "486",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 1,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 4,
@@ -2622,6 +2633,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "pentium",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 1,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 5,
@@ -2634,6 +2646,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "pentium2",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 2,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
@@ -2646,6 +2659,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "pentium3",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 3,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
@@ -2658,6 +2672,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "athlon",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 2,
         .vendor = CPUID_VENDOR_AMD,
         .family = 6,
@@ -2673,6 +2688,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "n270",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 10,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
@@ -2698,6 +2714,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "Conroe",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 10,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
@@ -2738,6 +2755,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "Penryn",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 10,
         .vendor = CPUID_VENDOR_INTEL,
         .family = 6,
@@ -4746,6 +4764,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "Opteron_G1",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 5,
         .vendor = CPUID_VENDOR_AMD,
         .family = 15,
@@ -4766,6 +4785,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "Opteron_G2",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 5,
         .vendor = CPUID_VENDOR_AMD,
         .family = 15,
@@ -4788,6 +4808,7 @@ static const X86CPUDefinition builtin_x86_defs[] = {
     },
     {
         .name = "Opteron_G3",
+        .deprecation_note = RHEL_CPU_DEPRECATION,
         .level = 5,
         .vendor = CPUID_VENDOR_AMD,
         .family = 16,
