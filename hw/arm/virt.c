@@ -3303,6 +3303,7 @@ static void machvirt_machine_init(void)
 }
 type_init(machvirt_machine_init);
 
+#if 0 /* Disabled for Red Hat Enterprise Linux */
 static void virt_machine_9_1_options(MachineClass *mc)
 {
 }
@@ -3548,3 +3549,4 @@ static void virt_machine_2_6_options(MachineClass *mc)
     vmc->no_pmu = true;
 }
 DEFINE_VIRT_MACHINE(2, 6)
+#endif /* disabled for RHEL */
