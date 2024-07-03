@@ -4825,6 +4825,7 @@ static void spapr_machine_latest_class_options(MachineClass *mc)
     }                                                                \
     type_init(spapr_machine_register_##suffix)
 
+#if 0 /* Disabled for Red Hat Enterprise Linux */
 /*
  * pseries-9.1
  */
@@ -5029,6 +5030,7 @@ static void spapr_machine_4_1_class_options(MachineClass *mc)
 }
 
 DEFINE_SPAPR_MACHINE(4_1, "4.1", false);
+#endif /* disabled for RHEL */
 
 /*
  * pseries-4.0
@@ -5044,6 +5046,8 @@ static bool phb_placement_4_0(SpaprMachineState *spapr, uint32_t index,
     }
     return true;
 }
+
+#if 0 /* Disabled for Red Hat Enterprise Linux */
 static void spapr_machine_4_0_class_options(MachineClass *mc)
 {
     SpaprMachineClass *smc = SPAPR_MACHINE_CLASS(mc);
@@ -5369,6 +5373,7 @@ static void spapr_machine_2_1_class_options(MachineClass *mc)
     compat_props_add(mc->compat_props, hw_compat_2_1, hw_compat_2_1_len);
 }
 DEFINE_SPAPR_MACHINE(2_1, "2.1", false);
+#endif /* disabled for RHEL */
 
 static void spapr_machine_register_types(void)
 {
