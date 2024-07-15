@@ -31,7 +31,8 @@ class QemuBaseTest(unittest.TestCase):
     arch = None
 
     workdir = None
-    log = logging.getLogger('qemu-test')
+    log = None
+    logdir = None
 
     def setUp(self, bin_prefix):
         self.assertIsNotNone(self.qemu_bin, 'QEMU_TEST_QEMU_BINARY must be set')
@@ -41,6 +42,20 @@ class QemuBaseTest(unittest.TestCase):
                                     self.id())
         if not os.path.exists(self.workdir):
             os.makedirs(self.workdir)
+
+        self.logdir = self.workdir
+        self.log = logging.getLogger('qemu-test')
+        self.log.setLevel(logging.DEBUG)
+        self._log_fh = logging.FileHandler(os.path.join(self.logdir,
+                                                        'base.log'), mode='w')
+        self._log_fh.setLevel(logging.DEBUG)
+        fileFormatter = logging.Formatter(
+            '%(asctime)s - %(levelname)s: %(message)s')
+        self._log_fh.setFormatter(fileFormatter)
+        self.log.addHandler(self._log_fh)
+
+    def tearDown(self):
+        self.log.removeHandler(self._log_fh)
 
     def main():
         tr = pycotap.TAPTestRunner(message_log = pycotap.LogMode.LogToError,
@@ -60,6 +75,15 @@ class QemuSystemTest(QemuBaseTest):
         self._vms = {}
 
         super().setUp('qemu-system-')
+
+        console_log = logging.getLogger('console')
+        console_log.setLevel(logging.DEBUG)
+        self._console_log_fh = logging.FileHandler(os.path.join(self.workdir,
+                                                   'console.log'), mode='w')
+        self._console_log_fh.setLevel(logging.DEBUG)
+        fileFormatter = logging.Formatter('%(asctime)s: %(message)s')
+        self._console_log_fh.setFormatter(fileFormatter)
+        console_log.addHandler(self._console_log_fh)
 
     def set_machine(self, machinename):
         # TODO: We should use QMP to get the list of available machines
@@ -151,4 +175,5 @@ class QemuSystemTest(QemuBaseTest):
     def tearDown(self):
         for vm in self._vms.values():
             vm.shutdown()
+        logging.getLogger('console').removeHandler(self._console_log_fh)
         super().tearDown()
