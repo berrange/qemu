@@ -34,6 +34,14 @@ tests_loongarch64_thorough = [
   'loongarch64_virt',
 ]
 
+tests_microblaze_thorough = [
+  'microblaze_s3adsp1800'
+]
+
+tests_microblazeel_thorough = [
+  'microblazeel_s3adsp1800'
+]
+
 tests_mips64el_thorough = [
   'mips64el_loongson3v',
 ]
