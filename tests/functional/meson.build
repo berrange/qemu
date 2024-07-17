@@ -55,6 +55,14 @@ tests_ppc_thorough = [
   'ppc_bamboo',
 ]
 
+tests_riscv32_quick = [
+  'riscv_opensbi',
+]
+
+tests_riscv64_quick = [
+  'riscv_opensbi',
+]
+
 tests_s390x_thorough = [
   's390x_ccw_virtio',
   's390x_topology',
