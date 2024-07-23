@@ -11,6 +11,7 @@ endif
 
 # Timeouts for individual tests that can be slow e.g. with debugging enabled
 test_timeouts = {
+  'acpi_bits' : 240,
   'netdev_ethtool' : 180,
   'ppc_40p' : 240,
   'ppc64_powernv' : 120,
@@ -97,6 +98,7 @@ tests_x86_64_quick = [
 ]
 
 tests_x86_64_thorough = [
+  'acpi_bits',
   'netdev_ethtool',
   'virtio_gpu',
 ]
