@@ -74,6 +74,10 @@ msys2-64bit:
   - .\msys64\usr\bin\bash -lc "sed -i 's/^CheckSpace/#CheckSpace/g' /etc/pacman.conf"
   - .\msys64\usr\bin\bash -lc 'pacman --noconfirm -Syuu'  # Core update
   - .\msys64\usr\bin\bash -lc 'pacman --noconfirm -Syuu'  # Normal update
+  - Invoke-WebRequest
+      "https://repo.msys2.org/msys/x86_64/msys2-runtime-3.5.3-4-x86_64.pkg.tar.zst"
+      -outfile "c:\msys2-runtime.tar.zst"
+  - .\msys64\usr\bin\bash -lc 'pacman --noconfirm -U /c/msys2-runtime.tar.zst '
   - taskkill /F /FI "MODULES eq msys-2.0.dll"
   script:
   - Write-Output "Installing mingw packages at $(Get-Date -Format u)"
