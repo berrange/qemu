@@ -80,6 +80,10 @@ tests_riscv64_quick = [
   'riscv_opensbi',
 ]
 
+tests_rx_thorough = [
+  'rx_gdbsim',
+]
+
 tests_s390x_thorough = [
   's390x_ccw_virtio',
   's390x_topology',
