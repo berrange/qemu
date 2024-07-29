@@ -159,9 +159,10 @@ FUNCTIONAL_TARGETS=$(patsubst %-softmmu,check-functional-%, $(filter %-softmmu,$
 $(FUNCTIONAL_TARGETS):
 	@$(MAKE) SPEED=thorough $(subst -functional,-func,$@)
 
-.PHONY: check-functional
+.PHONY: check-functional functional-precache
 check-functional:
-	@$(MAKE) SPEED=thorough check-func check-func-quick
+	@$(MAKE) check-func-precache
+	@QEMU_TEST_NO_DOWNLOAD=1 $(MAKE) SPEED=thorough check-func check-func-quick
 
 # Consolidated targets
 
