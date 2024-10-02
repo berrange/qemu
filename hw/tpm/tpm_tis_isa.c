@@ -149,7 +149,8 @@ static void build_tpm_tis_isa_aml(AcpiDevAmlIf *adev, Aml *scope)
         aml_append(dev, aml_name_decl("_HID", aml_string("MSFT0101")));
         aml_append(dev, aml_name_decl("_STR", aml_string("TPM 2.0 Device")));
     } else {
-        aml_append(dev, aml_name_decl("_HID", aml_eisaid("PNP0C31")));
+        aml_append(dev, aml_name_decl("_HID", aml_eisaid("IFX0102")));
+        aml_append(dev, aml_name_decl("_CID", aml_eisaid("PNP0C31")));
     }
     aml_append(dev, aml_name_decl("_UID", aml_int(1)));
     aml_append(dev, aml_name_decl("_STA", aml_int(0xF)));
