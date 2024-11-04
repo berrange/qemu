@@ -330,9 +330,18 @@ elif host_os == 'sunos'
 elif host_os == 'haiku'
   qemu_common_flags += ['-DB_USE_POSITIVE_POSIX_ERRORS', '-D_BSD_SOURCE', '-fPIC']
 elif host_os == 'windows'
+    # Clang is blocked, pending impl of 'gcc_struct' support:
+    #
+    #  https://gitlab.com/qemu-project/qemu/-/issues/2476
+    #  https://github.com/llvm/llvm-project/issues/24757
+    #  https://github.com/llvm/llvm-project/pull/71148
+    #
+    # Once the above is available this check should "do the right thing".
+    # This check can then eventually be removed once the CLang minimum
+    # version checked 50 lines earlier guarantees support
   if not compiler.compiles('struct x { int y; } __attribute__((gcc_struct));',
                            args: '-Werror')
-    error('Your compiler does not support __attribute__((gcc_struct)) - please use GCC instead of Clang')
+    error('Your compiler does not support __attribute__((gcc_struct)) - please use GCC instead of Clang (https://github.com/llvm/llvm-project/issues/24757)')
   endif
 endif
 

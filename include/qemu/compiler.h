@@ -22,6 +22,13 @@
 #define QEMU_EXTERN_C extern
 #endif
 
+/*
+ * QEMU requires 'gcc_struct' on Windows for correct guest ABI.
+ * meson.build checks for 'gcc_struct' and blocks use of CLang
+ * on Windows, pending a fix for:
+ *
+ *   https://github.com/llvm/llvm-project/issues/24757
+ */
 #if defined(_WIN32) && (defined(__x86_64__) || defined(__i386__))
 # define QEMU_PACKED __attribute__((gcc_struct, packed))
 #else
