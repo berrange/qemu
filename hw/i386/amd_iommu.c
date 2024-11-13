@@ -167,11 +167,11 @@ static void amdvi_generate_msi_interrupt(AMDVIState *s)
 {
     MSIMessage msg = {};
     MemTxAttrs attrs = {
-        .requester_id = pci_requester_id(&s->pci.dev)
+        .requester_id = pci_requester_id(&s->pci->dev)
     };
 
-    if (msi_enabled(&s->pci.dev)) {
-        msg = msi_get_message(&s->pci.dev, 0);
+    if (msi_enabled(&s->pci->dev)) {
+        msg = msi_get_message(&s->pci->dev, 0);
         address_space_stl_le(&address_space_memory, msg.address, msg.data,
                              attrs, NULL);
     }
@@ -239,7 +239,7 @@ static void amdvi_page_fault(AMDVIState *s, uint16_t devid,
     info |= AMDVI_EVENT_IOPF_I | AMDVI_EVENT_IOPF;
     amdvi_encode_event(evt, devid, addr, info);
     amdvi_log_event(s, evt);
-    pci_word_test_and_set_mask(s->pci.dev.config + PCI_STATUS,
+    pci_word_test_and_set_mask(s->pci->dev.config + PCI_STATUS,
             PCI_STATUS_SIG_TARGET_ABORT);
 }
 /*
@@ -256,7 +256,7 @@ static void amdvi_log_devtab_error(AMDVIState *s, uint16_t devid,
 
     amdvi_encode_event(evt, devid, devtab, info);
     amdvi_log_event(s, evt);
-    pci_word_test_and_set_mask(s->pci.dev.config + PCI_STATUS,
+    pci_word_test_and_set_mask(s->pci->dev.config + PCI_STATUS,
             PCI_STATUS_SIG_TARGET_ABORT);
 }
 /* log an event trying to access command buffer
@@ -269,7 +269,7 @@ static void amdvi_log_command_error(AMDVIState *s, hwaddr addr)
 
     amdvi_encode_event(evt, 0, addr, info);
     amdvi_log_event(s, evt);
-    pci_word_test_and_set_mask(s->pci.dev.config + PCI_STATUS,
+    pci_word_test_and_set_mask(s->pci->dev.config + PCI_STATUS,
             PCI_STATUS_SIG_TARGET_ABORT);
 }
 /* log an illegal command event
@@ -310,7 +310,7 @@ static void amdvi_log_pagetab_error(AMDVIState *s, uint16_t devid,
     info |= AMDVI_EVENT_PAGE_TAB_HW_ERROR;
     amdvi_encode_event(evt, devid, addr, info);
     amdvi_log_event(s, evt);
-    pci_word_test_and_set_mask(s->pci.dev.config + PCI_STATUS,
+    pci_word_test_and_set_mask(s->pci->dev.config + PCI_STATUS,
              PCI_STATUS_SIG_TARGET_ABORT);
 }
 
@@ -1607,7 +1607,7 @@ static void amdvi_sysbus_reset(DeviceState *dev)
 {
     AMDVIState *s = AMD_IOMMU_DEVICE(dev);
 
-    msi_reset(&s->pci.dev);
+    msi_reset(&s->pci->dev);
     amdvi_init(s);
 }
 
@@ -1621,11 +1621,6 @@ static void amdvi_sysbus_realize(DeviceState *dev, Error **errp)
 
     s->iotlb = g_hash_table_new_full(amdvi_uint64_hash,
                                      amdvi_uint64_equal, g_free, g_free);
-
-    /* This device should take care of IOMMU PCI properties */
-    if (!qdev_realize(DEVICE(&s->pci), &bus->qbus, errp)) {
-        return;
-    }
 
     /* Pseudo address space under root PCI bus. */
     x86ms->ioapic_as = amdvi_host_dma_iommu(bus, s, AMDVI_IOAPIC_SB_DEVID);
@@ -1668,6 +1663,7 @@ static void amdvi_sysbus_realize(DeviceState *dev, Error **errp)
 
 static Property amdvi_properties[] = {
     DEFINE_PROP_BOOL("xtsup", AMDVIState, xtsup, false),
+    DEFINE_PROP_STRING("pci-id", AMDVIState, pci_id),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -1680,7 +1676,23 @@ static void amdvi_sysbus_instance_init(Object *klass)
 {
     AMDVIState *s = AMD_IOMMU_DEVICE(klass);
 
-    object_initialize(&s->pci, sizeof(s->pci), TYPE_AMD_IOMMU_PCI);
+    if (s->pci_id != NULL) {
+        Object *obj;
+        obj = object_resolve_path_component(
+            object_get_objects_root(), s->pci_id);
+        if (!obj) {
+            error_report("Cannot find PCI device '%s'", s->pci_id);
+            exit(EXIT_FAILURE);
+        }
+        s->pci = (AMDVIPCIState *)object_dynamic_cast(obj,
+                                                      TYPE_AMD_IOMMU_PCI);
+        if (!s->pci) {
+            error_report("Device '%s' must be an AMDVI-PCI device type", s->pci_id);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        s->pci = AMD_IOMMU_PCI(object_new(TYPE_AMD_IOMMU_PCI));
+    }
 }
 
 static void amdvi_sysbus_class_init(ObjectClass *klass, void *data)
