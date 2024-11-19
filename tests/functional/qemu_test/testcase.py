@@ -175,6 +175,13 @@ class QemuSystemTest(QemuBaseTest):
                          log_dir=self.logdir)
         self.log.debug('QEMUMachine "%s" created', name)
         self.log.debug('QEMUMachine "%s" temp_dir: %s', name, vm.temp_dir)
+
+        if "QEMU_TEST_QMP_BACKDOOR" in os.environ:
+            path = os.environ["QEMU_TEST_QMP_BACKDOOR"]
+            vm.add_args("-chardev",
+                        f"socket,id=backdoor,path={path},server=on,wait=off",
+                        "-mon", "chardev=backdoor,mode=control")
+
         if args:
             vm.add_args(*args)
         return vm
