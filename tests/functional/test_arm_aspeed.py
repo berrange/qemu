@@ -35,7 +35,7 @@ class AST1030Machine(LinuxKernelTest):
         kernel_name = "ast1030-evb-demo/zephyr.elf"
         with ZipFile(zip_file, 'r') as zf:
                      zf.extract(kernel_name, path=self.workdir)
-        kernel_file = os.path.join(self.workdir, kernel_name)
+        kernel_file = self.scratch_file(kernel_name)
 
         self.vm.set_console()
         self.vm.add_args('-kernel', kernel_file, '-nographic')
@@ -57,7 +57,7 @@ class AST1030Machine(LinuxKernelTest):
         kernel_name = "ast1030-evb-demo/zephyr.bin"
         with ZipFile(zip_file, 'r') as zf:
                      zf.extract(kernel_name, path=self.workdir)
-        kernel_file = os.path.join(self.workdir, kernel_name)
+        kernel_file = self.scratch_file(kernel_name)
 
         self.vm.set_console()
         self.vm.add_args('-kernel', kernel_file, '-nographic')
@@ -226,14 +226,16 @@ class AST2x00Machine(LinuxKernelTest):
 
         image_path = self.ASSET_BR2_202302_AST2600_TPM_FLASH.fetch()
 
-        tpmstate_dir = tempfile.TemporaryDirectory(prefix="qemu_")
+        tpmstate_dir = self.scratch_file('swtpmstate')
+        os.mkdir(tpmstate_dir)
+        socket_dir = tempfile.TemporaryDirectory(prefix="qemu_")
         socket = os.path.join(tpmstate_dir.name, 'swtpm-socket')
 
         # We must put the TPM state dir in /tmp/, not the build dir,
         # because some distros use AppArmor to lock down swtpm and
         # restrict the set of locations it can access files in.
         subprocess.run(['swtpm', 'socket', '-d', '--tpm2',
-                        '--tpmstate', f'dir={tpmstate_dir.name}',
+                        '--tpmstate', f'dir={tpmstate_dir}',
                         '--ctrl', f'type=unixio,path={socket}'])
 
         self.vm.add_args('-chardev', f'socket,id=chrtpm,path={socket}')
@@ -274,7 +276,7 @@ class AST2x00Machine(LinuxKernelTest):
         archive_extract(image_path, self.workdir)
 
         self.do_test_arm_aspeed_sdk_start(
-            self.workdir + '/ast2500-default/image-bmc')
+            self.scratch_file('ast2500-default', 'image-bmc'))
 
         self.wait_for_console_pattern('ast2500-default login:')
 
@@ -294,7 +296,7 @@ class AST2x00Machine(LinuxKernelTest):
         self.vm.add_args('-device',
             'ds1338,bus=aspeed.i2c.bus.5,address=0x32');
         self.do_test_arm_aspeed_sdk_start(
-            self.workdir + '/ast2600-a2/image-bmc')
+            self.scratch_file('ast2600-a2', 'image-bmc'))
 
         self.wait_for_console_pattern('ast2600-a2 login:')
 
