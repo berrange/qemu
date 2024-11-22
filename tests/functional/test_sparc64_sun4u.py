@@ -12,8 +12,7 @@
 
 import os
 
-from qemu_test import QemuSystemTest, Asset
-from qemu_test import wait_for_console_pattern
+from qemu_test import QemuSystemTest, Asset, wait_for_console_pattern
 from qemu_test.utils import archive_extract
 
 class Sun4uMachine(QemuSystemTest):

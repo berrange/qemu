@@ -15,8 +15,7 @@
 import os
 import logging
 
-from qemu_test import QemuSystemTest, Asset
-from qemu_test import wait_for_console_pattern
+from qemu_test import QemuSystemTest, Asset, wait_for_console_pattern
 from unittest import skipUnless
 
 

@@ -9,8 +9,7 @@
 import os
 import bz2
 
-from qemu_test import QemuUserTest, Asset
-from qemu_test import has_cmd
+from qemu_test import QemuUserTest, Asset, has_cmd
 from qemu_test.utils import cpio_extract
 from unittest import skipUnless
 

@@ -10,9 +10,8 @@
 
 import os
 
-from qemu_test import QemuSystemTest, Asset
-from qemu_test import wait_for_console_pattern
-from qemu_test import interrupt_interactive_console_until_pattern
+from qemu_test import (QemuSystemTest, Asset, wait_for_console_pattern,
+                       interrupt_interactive_console_until_pattern)
 from unittest import skipUnless
 from test_aarch64_sbsaref import fetch_firmware
 

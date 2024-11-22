@@ -11,10 +11,9 @@ import time
 import subprocess
 import tempfile
 
-from qemu_test import LinuxKernelTest, Asset
-from qemu_test import exec_command_and_wait_for_pattern
-from qemu_test import interrupt_interactive_console_until_pattern
-from qemu_test import has_cmd
+from qemu_test import (LinuxKernelTest, Asset,
+                       exec_command_and_wait_for_pattern,
+                       interrupt_interactive_console_until_pattern, has_cmd)
 from qemu_test.utils import archive_extract
 from zipfile import ZipFile
 from unittest import skipUnless

@@ -7,8 +7,8 @@
 import os
 import shutil
 
-from qemu_test import LinuxKernelTest, Asset
-from qemu_test import exec_command_and_wait_for_pattern
+from qemu_test import (LinuxKernelTest, Asset,
+                       exec_command_and_wait_for_pattern)
 from qemu_test.utils import archive_extract
 
 class R2dEBTest(LinuxKernelTest):

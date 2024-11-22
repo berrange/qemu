@@ -10,8 +10,8 @@
 # later.  See the COPYING file in the top-level directory.
 
 from unittest import skipIf, skipUnless
-from qemu_test import QemuSystemTest, Asset
-from qemu_test import wait_for_console_pattern, exec_command
+from qemu_test import (QemuSystemTest, Asset, wait_for_console_pattern,
+                       exec_command)
 import os
 import time
 import subprocess

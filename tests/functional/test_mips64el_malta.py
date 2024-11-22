@@ -12,8 +12,8 @@
 import os
 import logging
 
-from qemu_test import LinuxKernelTest, Asset
-from qemu_test import exec_command_and_wait_for_pattern
+from qemu_test import (LinuxKernelTest, Asset,
+                       exec_command_and_wait_for_pattern)
 from qemu_test.utils import gzip_uncompress
 from unittest import skipUnless
 

@@ -14,10 +14,8 @@ import time
 import os
 import logging
 
-from qemu_test import BUILD_DIR
-from qemu_test import QemuSystemTest, Asset
-from qemu_test import exec_command, wait_for_console_pattern
-from qemu_test import get_qemu_img, run_cmd
+from qemu_test import (BUILD_DIR, QemuSystemTest, Asset, exec_command,
+                       wait_for_console_pattern, get_qemu_img, run_cmd)
 
 
 class Aarch64VirtMachine(QemuSystemTest):

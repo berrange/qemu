@@ -6,12 +6,10 @@
 # later.  See the COPYING file in the top-level directory.
 
 
-from qemu_test import BUILD_DIR
-from qemu_test import QemuSystemTest, Asset
-from qemu_test import wait_for_console_pattern
-from qemu_test import exec_command_and_wait_for_pattern
-from qemu_test import is_readable_executable_file
-
+from qemu_test import (BUILD_DIR, QemuSystemTest, Asset,
+                       wait_for_console_pattern,
+                       exec_command_and_wait_for_pattern,
+                       is_readable_executable_file)
 from qemu.utils import kvm_available
 
 import os

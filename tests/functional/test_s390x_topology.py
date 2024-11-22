@@ -12,10 +12,9 @@
 
 import os
 
-from qemu_test import QemuSystemTest, Asset
-from qemu_test import exec_command
-from qemu_test import exec_command_and_wait_for_pattern
-from qemu_test import wait_for_console_pattern
+from qemu_test import (QemuSystemTest, Asset, exec_command,
+                       exec_command_and_wait_for_pattern,
+                       wait_for_console_pattern)
 from qemu_test.utils import lzma_uncompress
 
 

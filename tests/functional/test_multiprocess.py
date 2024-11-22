@@ -9,8 +9,8 @@
 import os
 import socket
 
-from qemu_test import QemuSystemTest, Asset, wait_for_console_pattern
-from qemu_test import exec_command, exec_command_and_wait_for_pattern
+from qemu_test import (QemuSystemTest, Asset, wait_for_console_pattern,
+                       exec_command, exec_command_and_wait_for_pattern)
 
 class Multiprocess(QemuSystemTest):
 
