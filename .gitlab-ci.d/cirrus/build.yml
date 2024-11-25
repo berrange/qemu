@@ -5,6 +5,7 @@
 
 env:
   CIRRUS_CLONE_DEPTH: 1
+  CCACHE: "@CCACHE@"
   CI_REPOSITORY_URL: "@CI_REPOSITORY_URL@"
   CI_COMMIT_REF_NAME: "@CI_COMMIT_REF_NAME@"
   CI_COMMIT_SHA: "@CI_COMMIT_SHA@"
@@ -27,7 +28,14 @@ build_task:
     - git clone --depth 100 "$CI_REPOSITORY_URL" .
     - git fetch origin "$CI_COMMIT_REF_NAME"
     - git reset --hard "$CI_COMMIT_SHA"
+  obj_cache:
+    folder: ccache
   step_script:
+    - export CCACHE_BASEDIR="$(pwd)"
+    - export CCACHE_DIR="$CCACHE_BASEDIR/ccache"
+    - export CCACHE_MAXSIZE="1000M"
+    - ccache --zero-stats
+    - ccache --show-stats
     - mkdir build
     - cd build
     - ../configure --enable-werror $CONFIGURE_ARGS
@@ -38,6 +46,7 @@ build_task:
         $MAKE -j$(sysctl -n hw.ncpu) $TARGET V=1 ;
       done
     - find . -not -path 'meson-logs/*' -delete
+    - ccache --show-stats
   always:
     build_result_artifacts:
       path: build/meson-logs/*log.txt
