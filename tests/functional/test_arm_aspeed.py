@@ -9,7 +9,6 @@
 import os
 import time
 import subprocess
-import tempfile
 
 from qemu_test import (LinuxKernelTest, Asset,
                        exec_command_and_wait_for_pattern,
@@ -228,8 +227,8 @@ class AST2x00Machine(LinuxKernelTest):
 
         tpmstate_dir = self.scratch_file('swtpmstate')
         os.mkdir(tpmstate_dir)
-        socket_dir = tempfile.TemporaryDirectory(prefix="qemu_")
-        socket = os.path.join(tpmstate_dir.name, 'swtpm-socket')
+        socket_dir = self.socket_dir()
+        socket = os.path.join(socket_dir.name, 'swtpm-socket')
 
         # We must put the TPM state dir in /tmp/, not the build dir,
         # because some distros use AppArmor to lock down swtpm and
