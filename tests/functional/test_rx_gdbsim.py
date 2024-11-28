@@ -12,10 +12,9 @@
 
 import os
 
-from unittest import skipUnless
 from qemu_test import (QemuSystemTest, Asset,
                        exec_command_and_wait_for_pattern,
-                       wait_for_console_pattern)
+                       wait_for_console_pattern, skipFlakyTest)
 from qemu_test.utils import gzip_uncompress
 
 
@@ -54,7 +53,8 @@ class RxGdbSimMachine(QemuSystemTest):
         # FIXME limit baudrate on chardev, else we type too fast
         #exec_command_and_wait_for_pattern(self, 'version', gcc_version)
 
-    @skipUnless(os.getenv('QEMU_TEST_FLAKY_TESTS'), 'Test is unstable on GitLab')
+    # XXX file tracking bug
+    @skipFlakyTest(bug_url=None)
     def test_linux_sash(self):
         """
         Boots a Linux kernel and checks that the console is operational.
