@@ -37,6 +37,7 @@ build_task:
       do
         $MAKE -j$(sysctl -n hw.ncpu) $TARGET V=1 ;
       done
+    - find . -not -path 'meson-logs/*' -delete
   always:
     build_result_artifacts:
       path: build/meson-logs/*log.txt
