@@ -34,6 +34,7 @@ build_task:
     - export CCACHE_BASEDIR="$(pwd)"
     - export CCACHE_DIR="$CCACHE_BASEDIR/ccache"
     - export CCACHE_MAXSIZE="1000M"
+    - export CCACHE_COMPILERCHECK="string:$(clang -v 2>&1)"
     - ccache --zero-stats
     - ccache --show-stats
     - mkdir build
