@@ -53,7 +53,7 @@ build_task:
         $MAKE -j$(sysctl -n hw.ncpu) $TARGET V=1 ;
       done
     - df
-    - find . -not -path 'meson-logs/*' -delete
+    - find . -name '*.o' -o -name '*.a' -delete
     - df
     - ccache --show-stats
   always:
