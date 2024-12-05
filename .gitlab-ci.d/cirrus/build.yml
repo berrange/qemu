@@ -52,10 +52,10 @@ build_task:
       do
         $MAKE -j$(sysctl -n hw.ncpu) $TARGET V=1 ;
       done
-    - df
-    - find . -not -path 'meson-logs/*' -delete
-    - df
     - ccache --show-stats
+    # Save space, as 'cache' upload needs working space
+    - find . -name '*.o' -delete -o -name '*.a' -delete
+    - df
   always:
     build_result_artifacts:
       path: build/meson-logs/*log.txt
