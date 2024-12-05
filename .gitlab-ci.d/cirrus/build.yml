@@ -20,9 +20,14 @@ build_task:
   # A little shorter than GitLab timeout in ../cirrus.yml
   timeout_in: 60m
   install_script:
+    - df
     - @UPDATE_COMMAND@
+    - date
     - @INSTALL_COMMAND@ @PKGS@
+    - date
     - @CLEAN_COMMAND@
+    - date
+    - df
     - if test -n "@PYPI_PKGS@" ; then PYLIB=$(@PYTHON@ -c 'import sysconfig; print(sysconfig.get_path("stdlib"))'); rm -f $PYLIB/EXTERNALLY-MANAGED; @PIP3@ install @PYPI_PKGS@ ; fi
   clone_script:
     - git clone --depth 100 "$CI_REPOSITORY_URL" .
@@ -39,6 +44,7 @@ build_task:
     - ccache --show-stats
     - mkdir build
     - cd build
+    - df
     - ../configure --enable-werror $CONFIGURE_ARGS
       || { cat config.log meson-logs/meson-log.txt; exit 1; }
     - $MAKE -j$(sysctl -n hw.ncpu)
@@ -46,7 +52,9 @@ build_task:
       do
         $MAKE -j$(sysctl -n hw.ncpu) $TARGET V=1 ;
       done
+    - df
     - find . -not -path 'meson-logs/*' -delete
+    - df
     - ccache --show-stats
   always:
     build_result_artifacts:
