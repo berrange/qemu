@@ -4440,6 +4440,7 @@ if stap.found()
   endforeach
 endif
 
+subdir('python')
 subdir('scripts')
 subdir('tools')
 subdir('pc-bios')
