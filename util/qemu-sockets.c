@@ -217,7 +217,6 @@ static int inet_set_sockopts(int sock, InetSocketAddress *saddr, Error **errp)
                              "Unable to set keep-alive option on socket");
             return -1;
         }
-#ifdef HAVE_TCP_KEEPCNT
         if (saddr->has_keep_alive_count &&
             saddr->keep_alive_count) {
             int keep_count = saddr->has_keep_alive_count;
@@ -229,8 +228,6 @@ static int inet_set_sockopts(int sock, InetSocketAddress *saddr, Error **errp)
                 return -1;
             }
         }
-#endif
-#ifdef HAVE_TCP_KEEPIDLE
         if (saddr->has_keep_alive_idle &&
             saddr->keep_alive_idle) {
             int keep_idle = saddr->has_keep_alive_idle;
@@ -242,8 +239,6 @@ static int inet_set_sockopts(int sock, InetSocketAddress *saddr, Error **errp)
                 return -1;
             }
         }
-#endif
-#ifdef HAVE_TCP_KEEPINTVL
         if (saddr->has_keep_alive_interval &&
             saddr->keep_alive_interval) {
             int keep_interval = saddr->has_keep_alive_interval;
@@ -255,7 +250,6 @@ static int inet_set_sockopts(int sock, InetSocketAddress *saddr, Error **errp)
                 return -1;
             }
         }
-#endif
     }
     return 0;
 }
@@ -755,7 +749,6 @@ int inet_parse(InetSocketAddress *addr, const char *str, Error **errp)
         }
         addr->has_keep_alive = true;
     }
-#ifdef HAVE_TCP_KEEPCNT
     begin = strstr(optstr, ",keep-alive-count=");
     if (begin) {
         if (inet_parse_u32("keep-alive-count",
@@ -765,8 +758,6 @@ int inet_parse(InetSocketAddress *addr, const char *str, Error **errp)
         }
         addr->has_keep_alive_count = true;
     }
-#endif
-#ifdef HAVE_TCP_KEEPIDLE
     begin = strstr(optstr, ",keep-alive-idle=");
     if (begin) {
         if (inet_parse_u32("keep-alive-idle",
@@ -776,8 +767,6 @@ int inet_parse(InetSocketAddress *addr, const char *str, Error **errp)
         }
         addr->has_keep_alive_idle = true;
     }
-#endif
-#ifdef HAVE_TCP_KEEPINTVL
     begin = strstr(optstr, ",keep-alive-interval=");
     if (begin) {
         if (inet_parse_u32("keep-alive-interval",
@@ -787,7 +776,6 @@ int inet_parse(InetSocketAddress *addr, const char *str, Error **errp)
         }
         addr->has_keep_alive_interval = true;
     }
-#endif
 #ifdef HAVE_IPPROTO_MPTCP
     begin = strstr(optstr, ",mptcp");
     if (begin) {
