@@ -57,10 +57,12 @@ if have_user
   stub_ss.add(files('cpu-synchronize-state.c'))
 
   # Stubs for QAPI events.  Those can always be included in the build, but
-  # they are not built at all for --disable-system --disable-tools builds.
-  if not (have_system or have_tools)
+  # they are not built at all for --disable-system builds.
+  if not have_system
     stub_ss.add(files('qdev.c'))
   endif
+
+  stub_ss.add(files('monitor-internal.c'))
 endif
 
 if have_system

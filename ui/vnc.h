@@ -46,6 +46,10 @@
 #include "vnc-enc-zrle.h"
 #include "ui/kbd-state.h"
 
+#ifdef CONFIG_GSTREAMER
+#include <gst/gst.h>
+#endif
+
 // #define _VNC_DEBUG 1
 
 #ifdef _VNC_DEBUG
@@ -184,6 +188,10 @@ struct VncDisplay
     VncDisplaySASL sasl;
 #endif
 
+#ifdef CONFIG_GSTREAMER
+    const char *h264_encoder_list;
+#endif
+
     AudioState *audio_state;
 };
 
@@ -230,6 +238,19 @@ typedef struct VncZrle {
 typedef struct VncZywrle {
     int buf[VNC_ZRLE_TILE_WIDTH * VNC_ZRLE_TILE_HEIGHT];
 } VncZywrle;
+
+#ifdef CONFIG_GSTREAMER
+/* Number of frames we send after the display is clean. */
+#define VNC_H264_KEEP_DIRTY 10
+typedef struct VncH264 {
+    char *encoder_name;
+    GstElement *pipeline, *source, *gst_encoder, *sink, *convert;
+    size_t width;
+    size_t height;
+    guint keep_dirty;
+    Notifier shutdown_notifier;
+} VncH264;
+#endif
 
 struct VncRect
 {
@@ -344,6 +365,9 @@ struct VncState
     VncHextile hextile;
     VncZrle *zrle;
     VncZywrle zywrle;
+#ifdef CONFIG_GSTREAMER
+    VncH264 *h264;
+#endif
 
     Notifier mouse_mode_notifier;
 
@@ -404,6 +428,7 @@ enum {
 #define VNC_ENCODING_TRLE                 0x0000000f
 #define VNC_ENCODING_ZRLE                 0x00000010
 #define VNC_ENCODING_ZYWRLE               0x00000011
+#define VNC_ENCODING_H264                 0x00000032 /* 50   */
 #define VNC_ENCODING_COMPRESSLEVEL0       0xFFFFFF00 /* -256 */
 #define VNC_ENCODING_QUALITYLEVEL0        0xFFFFFFE0 /* -32  */
 #define VNC_ENCODING_XCURSOR              0xFFFFFF10 /* -240 */
@@ -464,6 +489,7 @@ enum VncFeatures {
     VNC_FEATURE_XVP,
     VNC_FEATURE_CLIPBOARD_EXT,
     VNC_FEATURE_AUDIO,
+    VNC_FEATURE_H264,
 };
 
 
@@ -624,6 +650,10 @@ void vnc_tight_clear(VncState *vs);
 int vnc_zrle_send_framebuffer_update(VncState *vs, int x, int y, int w, int h);
 int vnc_zywrle_send_framebuffer_update(VncState *vs, int x, int y, int w, int h);
 void vnc_zrle_clear(VncState *vs);
+
+bool vnc_h264_encoder_init(VncState *vs);
+int vnc_h264_send_framebuffer_update(VncState *vs, int x, int y, int w, int h);
+void vnc_h264_clear(VncState *vs);
 
 /* vnc-clipboard.c */
 void vnc_server_cut_text_caps(VncState *vs);
