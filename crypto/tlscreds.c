@@ -222,6 +222,10 @@ qcrypto_tls_creds_prop_get_endpoint(Object *obj,
 }
 
 
+int qcrypto_tls_creds_apply(QCryptoTLSCreds *creds,
+                            gnutls_session_t sess,
+                            Error **errp);
+
 static void
 qcrypto_tls_creds_class_init(ObjectClass *oc, const void *data)
 {
@@ -270,6 +274,20 @@ bool qcrypto_tls_creds_check_endpoint(QCryptoTLSCreds *creds,
         return false;
     }
     return true;
+}
+
+bool qcrypto_tls_creds_reload(QCryptoTLSCreds *creds,
+                              Error **errp)
+{
+    QCryptoTLSCredsClass *credscls = QCRYPTO_TLS_CREDS_GET_CLASS(OBJECT(creds));
+
+    if (credscls->reload) {
+        return credscls->reload(creds, errp);
+    }
+
+    error_setg(errp, "%s does not support reloading credentials",
+               object_get_typename(OBJECT(creds)));
+    return false;
 }
 
 static const TypeInfo qcrypto_tls_creds_info = {
