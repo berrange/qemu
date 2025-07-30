@@ -42,6 +42,22 @@ struct QCryptoTLSCredsX509 {
     char *passwordid;
 };
 
+typedef struct QCryptoTLSCredsX509Files QCryptoTLSCredsX509Files;
+struct QCryptoTLSCredsX509Files {
+    char *cacert;
+    char *cacrl;
+    char *cert;
+    char *key;
+    char *dhparams;
+};
+
+static void
+qcrypto_tls_creds_x509_files_free(QCryptoTLSCredsX509Files *files);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(QCryptoTLSCredsX509Files,
+                              qcrypto_tls_creds_x509_files_free);
+
+
 static int
 qcrypto_tls_creds_check_cert_times(gnutls_x509_crt_t cert,
                                    const char *certFile,
@@ -568,14 +584,71 @@ qcrypto_tls_creds_x509_sanity_check(QCryptoTLSCredsX509 *creds,
 }
 
 
+static void
+qcrypto_tls_creds_x509_files_free(QCryptoTLSCredsX509Files *files)
+{
+    if (!files) {
+        return;
+    }
+
+    g_free(files->cacert);
+    g_free(files->cacrl);
+    g_free(files->cert);
+    g_free(files->key);
+    g_free(files->dhparams);
+
+    g_free(files);
+}
+
+static QCryptoTLSCredsX509Files *
+qcrypto_tls_creds_x509_files_new_default(QCryptoTLSCredsX509 *creds,
+                                         Error **errp)
+{
+    g_autoptr(QCryptoTLSCredsX509Files) files =
+        g_new0(QCryptoTLSCredsX509Files, 1);
+
+    if (creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
+        if (qcrypto_tls_creds_get_path(&creds->parent_obj,
+                                       QCRYPTO_TLS_CREDS_X509_CA_CERT,
+                                       true, &files->cacert, errp) < 0 ||
+            qcrypto_tls_creds_get_path(&creds->parent_obj,
+                                       QCRYPTO_TLS_CREDS_X509_CA_CRL,
+                                       false, &files->cacrl, errp) < 0 ||
+            qcrypto_tls_creds_get_path(&creds->parent_obj,
+                                       QCRYPTO_TLS_CREDS_X509_SERVER_CERT,
+                                       true, &files->cert, errp) < 0 ||
+            qcrypto_tls_creds_get_path(&creds->parent_obj,
+                                       QCRYPTO_TLS_CREDS_X509_SERVER_KEY,
+                                       true, &files->key, errp) < 0 ||
+            qcrypto_tls_creds_get_path(&creds->parent_obj,
+                                       QCRYPTO_TLS_CREDS_DH_PARAMS,
+                                       false, &files->dhparams, errp) < 0) {
+            return NULL;
+        }
+    } else {
+        if (qcrypto_tls_creds_get_path(&creds->parent_obj,
+                                       QCRYPTO_TLS_CREDS_X509_CA_CERT,
+                                       true, &files->cacert, errp) < 0 ||
+            qcrypto_tls_creds_get_path(&creds->parent_obj,
+                                       QCRYPTO_TLS_CREDS_X509_CLIENT_CERT,
+                                       false, &files->cert, errp) < 0 ||
+            qcrypto_tls_creds_get_path(&creds->parent_obj,
+                                       QCRYPTO_TLS_CREDS_X509_CLIENT_KEY,
+                                       false, &files->key, errp) < 0) {
+            return NULL;
+        }
+    }
+
+    return g_steal_pointer(&files);
+}
+
+
 static int
 qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
                             Error **errp)
 {
-    char *cacert = NULL, *cacrl = NULL, *cert = NULL,
-        *key = NULL, *dhparams = NULL;
     int ret;
-    int rv = -1;
+    g_autoptr(QCryptoTLSCredsX509Files) files = NULL;
 
     if (!creds->parent_obj.dir) {
         error_setg(errp, "Missing 'dir' property value");
@@ -584,112 +657,79 @@ qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
 
     trace_qcrypto_tls_creds_x509_load(creds, creds->parent_obj.dir);
 
-    if (creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
-        if (qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_CA_CERT,
-                                       true, &cacert, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_CA_CRL,
-                                       false, &cacrl, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_SERVER_CERT,
-                                       true, &cert, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_SERVER_KEY,
-                                       true, &key, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_DH_PARAMS,
-                                       false, &dhparams, errp) < 0) {
-            goto cleanup;
-        }
-    } else {
-        if (qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_CA_CERT,
-                                       true, &cacert, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_CLIENT_CERT,
-                                       false, &cert, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_CLIENT_KEY,
-                                       false, &key, errp) < 0) {
-            goto cleanup;
-        }
+    files = qcrypto_tls_creds_x509_files_new_default(creds, errp);
+    if (!files) {
+        return -1;
     }
 
     if (creds->sanityCheck &&
         qcrypto_tls_creds_x509_sanity_check(creds,
             creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER,
-            cacert, cert, errp) < 0) {
-        goto cleanup;
+            files->cacert, files->cert, errp) < 0) {
+        return -1;
     }
 
     ret = gnutls_certificate_allocate_credentials(&creds->data);
     if (ret < 0) {
         error_setg(errp, "Cannot allocate credentials: '%s'",
                    gnutls_strerror(ret));
-        goto cleanup;
+        return -1;
     }
 
     ret = gnutls_certificate_set_x509_trust_file(creds->data,
-                                                 cacert,
+                                                 files->cacert,
                                                  GNUTLS_X509_FMT_PEM);
     if (ret < 0) {
         error_setg(errp, "Cannot load CA certificate '%s': %s",
-                   cacert, gnutls_strerror(ret));
-        goto cleanup;
+                   files->cacert, gnutls_strerror(ret));
+        return -1;
     }
 
-    if (cert != NULL && key != NULL) {
+    if (files->cert != NULL && files->key != NULL) {
         char *password = NULL;
         if (creds->passwordid) {
             password = qcrypto_secret_lookup_as_utf8(creds->passwordid,
                                                      errp);
             if (!password) {
-                goto cleanup;
+                return -1;
             }
         }
         ret = gnutls_certificate_set_x509_key_file2(creds->data,
-                                                    cert, key,
+                                                    files->cert, files->key,
                                                     GNUTLS_X509_FMT_PEM,
                                                     password,
                                                     0);
         g_free(password);
         if (ret < 0) {
             error_setg(errp, "Cannot load certificate '%s' & key '%s': %s",
-                       cert, key, gnutls_strerror(ret));
-            goto cleanup;
+                       files->cert, files->key, gnutls_strerror(ret));
+            return -1;
         }
     }
 
-    if (cacrl != NULL) {
+    if (files->cacrl != NULL) {
         ret = gnutls_certificate_set_x509_crl_file(creds->data,
-                                                   cacrl,
+                                                   files->cacrl,
                                                    GNUTLS_X509_FMT_PEM);
         if (ret < 0) {
             error_setg(errp, "Cannot load CRL '%s': %s",
-                       cacrl, gnutls_strerror(ret));
-            goto cleanup;
+                       files->cacrl, gnutls_strerror(ret));
+            return -1;
         }
     }
 
     if (creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
-        if (qcrypto_tls_creds_get_dh_params_file(&creds->parent_obj, dhparams,
+        if (qcrypto_tls_creds_get_dh_params_file(&creds->parent_obj,
+                                                 files->dhparams,
                                                  &creds->parent_obj.dh_params,
                                                  errp) < 0) {
-            goto cleanup;
+            return -1;
         }
         gnutls_certificate_set_dh_params(creds->data,
                                          creds->parent_obj.dh_params);
     }
 
-    rv = 0;
- cleanup:
-    g_free(cacert);
-    g_free(cacrl);
-    g_free(cert);
-    g_free(key);
-    g_free(dhparams);
-    return rv;
+    return 0;
 }
 
 
