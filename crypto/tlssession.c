@@ -302,9 +302,9 @@ qcrypto_tls_session_new(QCryptoTLSCreds *creds,
                                                   GNUTLS_CERT_REQUEST);
         }
     } else {
-        error_setg(errp, "Unsupported TLS credentials type %s",
-                   object_get_typename(OBJECT(creds)));
-        goto error;
+        if (!qcrypto_tls_creds_apply(creds, session->handle, errp)) {
+            goto error;
+        }
     }
 
     gnutls_transport_set_ptr(session->handle, session);

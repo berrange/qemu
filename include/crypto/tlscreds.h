@@ -33,8 +33,9 @@ DECLARE_OBJ_CHECKERS(QCryptoTLSCreds, QCryptoTLSCredsClass, QCRYPTO_TLS_CREDS,
 
 #define QCRYPTO_TLS_CREDS_DH_PARAMS "dh-params.pem"
 
+typedef bool (*QCryptoTLSCredsReload)(QCryptoTLSCreds *, Error **);
+typedef bool (*QCryptoTLSCredsApply)(QCryptoTLSCreds *, void *, Error **);
 
-typedef bool (*CryptoTLSCredsReload)(QCryptoTLSCreds *, Error **);
 /**
  * QCryptoTLSCreds:
  *
@@ -46,7 +47,8 @@ typedef bool (*CryptoTLSCredsReload)(QCryptoTLSCreds *, Error **);
 
 struct QCryptoTLSCredsClass {
     ObjectClass parent_class;
-    CryptoTLSCredsReload reload;
+    QCryptoTLSCredsReload reload;
+    QCryptoTLSCredsApply apply;
 };
 
 /**
@@ -75,5 +77,19 @@ bool qcrypto_tls_creds_check_endpoint(QCryptoTLSCreds *creds,
  */
 bool qcrypto_tls_creds_reload(QCryptoTLSCreds *creds,
                               Error **errp);
+
+/**
+ * qcrypto_tls_creds_apply:
+ * @creds: pointer to a TLS credentials object
+ * @sess: pointer to a backend specific TLS session object
+ * @errp: pointer to a NULL-initialized error object
+ *
+ * Apply credentials to a backend TLS session.
+ *
+ * Returns: true on success, false on error
+ */
+bool qcrypto_tls_creds_apply(QCryptoTLSCreds *creds,
+                             void *sess,
+                             Error **errp);
 
 #endif /* QCRYPTO_TLSCREDS_H */
