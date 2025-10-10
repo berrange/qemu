@@ -32,6 +32,8 @@ msys2-64bit:
   - If ( !(Test-Path -Path msys64\var\cache ) ) {
       mkdir msys64\var\cache
     }
+  - Get-ChildItem -Recurse msys64\var\cache
+  - Get-ChildItem -Recurse msys64\var\cache | Measure-Object -Sum Length
   - Invoke-WebRequest
     "https://repo.msys2.org/distrib/msys2-x86_64-latest.sfx.exe.sig"
     -outfile "msys2.exe.sig"
@@ -87,6 +89,9 @@ msys2-64bit:
       mingw-w64-x86_64-pkgconf
       mingw-w64-x86_64-python
       mingw-w64-x86_64-zstd"
+  - .\msys64\usr\bin\bash -lc "pacman -Sc --noconfirm"
+  - Get-ChildItem -Recurse msys64\var\cache
+  - Get-ChildItem -Recurse msys64\var\cache | Measure-Object -Sum Length
   - Write-Output "Running build at $(Get-Date -Format u)"
   - $env:JOBS = $(.\msys64\usr\bin\bash -lc nproc)
   - $env:CHERE_INVOKING = 'yes'  # Preserve the current working directory
