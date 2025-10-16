@@ -155,8 +155,6 @@ qcrypto_tls_session_pull(void *opaque, void *buf, size_t len)
     }
 }
 
-#define TLS_PRIORITY_ADDITIONAL_ANON "+ANON-DH"
-
 QCryptoTLSSession *
 qcrypto_tls_session_new(QCryptoTLSCreds *creds,
                         const char *hostname,
@@ -199,46 +197,8 @@ qcrypto_tls_session_new(QCryptoTLSCreds *creds,
         goto error;
     }
 
-    if (object_dynamic_cast(OBJECT(creds),
-                            TYPE_QCRYPTO_TLS_CREDS_ANON)) {
-        QCryptoTLSCredsAnon *acreds = QCRYPTO_TLS_CREDS_ANON(creds);
-        char *prio;
-
-        if (creds->priority != NULL) {
-            prio = g_strdup_printf("%s:%s",
-                                   creds->priority,
-                                   TLS_PRIORITY_ADDITIONAL_ANON);
-        } else {
-            prio = g_strdup(CONFIG_TLS_PRIORITY ":"
-                            TLS_PRIORITY_ADDITIONAL_ANON);
-        }
-
-        ret = gnutls_priority_set_direct(session->handle, prio, NULL);
-        if (ret < 0) {
-            error_setg(errp, "Unable to set TLS session priority %s: %s",
-                       prio, gnutls_strerror(ret));
-            g_free(prio);
-            goto error;
-        }
-        g_free(prio);
-        if (creds->endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
-            ret = gnutls_credentials_set(session->handle,
-                                         GNUTLS_CRD_ANON,
-                                         acreds->data.server);
-        } else {
-            ret = gnutls_credentials_set(session->handle,
-                                         GNUTLS_CRD_ANON,
-                                         acreds->data.client);
-        }
-        if (ret < 0) {
-            error_setg(errp, "Cannot set session credentials: %s",
-                       gnutls_strerror(ret));
-            goto error;
-        }
-    } else {
-        if (!qcrypto_tls_creds_apply(creds, session->handle, errp)) {
-            goto error;
-        }
+    if (!qcrypto_tls_creds_apply(creds, session->handle, errp)) {
+        goto error;
     }
 
     gnutls_transport_set_ptr(session->handle, session);
