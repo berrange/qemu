@@ -33,6 +33,14 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
+struct QCryptoTLSCredsX509 {
+    QCryptoTLSCreds parent_obj;
+#ifdef CONFIG_GNUTLS
+    gnutls_certificate_credentials_t data;
+#endif
+    bool sanityCheck;
+    char *passwordid;
+};
 
 static int
 qcrypto_tls_creds_check_cert_times(gnutls_x509_crt_t cert,
@@ -695,6 +703,42 @@ qcrypto_tls_creds_x509_unload(QCryptoTLSCredsX509 *creds)
 }
 
 
+static bool
+qcrypto_tls_creds_x509_apply(QCryptoTLSCreds *creds,
+                             void *sess,
+                             Error **errp)
+{
+    int ret;
+    QCryptoTLSCredsX509 *tcreds = QCRYPTO_TLS_CREDS_X509(creds);
+    const char *prio = creds->priority;
+    if (!prio) {
+        prio = CONFIG_TLS_PRIORITY;
+    }
+
+    ret = gnutls_priority_set_direct(sess, prio, NULL);
+    if (ret < 0) {
+        error_setg(errp, "Cannot set default TLS session priority %s: %s",
+                   prio, gnutls_strerror(ret));
+        return false;
+    }
+    ret = gnutls_credentials_set(sess,
+                                 GNUTLS_CRD_CERTIFICATE,
+                                 tcreds->data);
+    if (ret < 0) {
+        error_setg(errp, "Cannot set session credentials: %s",
+                   gnutls_strerror(ret));
+        return false;
+    }
+
+    if (creds->endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
+        /* This requests, but does not enforce a client cert.
+         * The cert checking code later does enforcement */
+        gnutls_certificate_server_set_request(sess,
+                                              GNUTLS_CERT_REQUEST);
+    }
+    return true;
+}
+
 #else /* ! CONFIG_GNUTLS */
 
 
@@ -712,6 +756,15 @@ qcrypto_tls_creds_x509_unload(QCryptoTLSCredsX509 *creds G_GNUC_UNUSED)
     /* nada */
 }
 
+
+static bool
+qcrypto_tls_creds_x509_apply(QCryptoTLSCreds *creds,
+                             void *sess,
+                             Error **errp)
+{
+    error_setg(errp, "TLS credentials support requires GNUTLS");
+    return false;
+}
 
 #endif /* ! CONFIG_GNUTLS */
 
@@ -835,9 +888,10 @@ static void
 qcrypto_tls_creds_x509_class_init(ObjectClass *oc, const void *data)
 {
     UserCreatableClass *ucc = USER_CREATABLE_CLASS(oc);
-    QCryptoTLSCredsClass *ctcc = QCRYPTO_TLS_CREDS_CLASS(oc);
+    QCryptoTLSCredsClass *cc = QCRYPTO_TLS_CREDS_CLASS(oc);
 
-    ctcc->reload = qcrypto_tls_creds_x509_reload;
+    cc->reload = qcrypto_tls_creds_x509_reload;
+    cc->apply = qcrypto_tls_creds_x509_apply;
 
     ucc->complete = qcrypto_tls_creds_x509_complete;
 
