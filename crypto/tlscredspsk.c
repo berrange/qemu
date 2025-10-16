@@ -31,6 +31,19 @@
 
 #include <gnutls/gnutls.h>
 
+#define TLS_PRIORITY_ADDITIONAL_PSK "+ECDHE-PSK:+DHE-PSK:+PSK"
+
+struct QCryptoTLSCredsPSK {
+    QCryptoTLSCreds parent_obj;
+    char *username;
+#ifdef CONFIG_GNUTLS
+    union {
+        gnutls_psk_server_credentials_t server;
+        gnutls_psk_client_credentials_t client;
+    } data;
+#endif
+};
+
 static int
 lookup_key(const char *pskfile, const char *username, gnutls_datum_t *key,
            Error **errp)
@@ -176,6 +189,48 @@ qcrypto_tls_creds_psk_unload(QCryptoTLSCredsPSK *creds)
     }
 }
 
+static bool
+qcrypto_tls_creds_psk_apply(QCryptoTLSCreds *creds,
+                            void *sess,
+                            Error **errp)
+{
+    int ret;
+    QCryptoTLSCredsPSK *pcreds = QCRYPTO_TLS_CREDS_PSK(creds);
+    g_autofree char *prio = NULL;
+
+    if (creds->priority != NULL) {
+        prio = g_strdup_printf("%s:%s",
+                               creds->priority,
+                               TLS_PRIORITY_ADDITIONAL_PSK);
+    } else {
+        prio = g_strdup(CONFIG_TLS_PRIORITY ":"
+                        TLS_PRIORITY_ADDITIONAL_PSK);
+    }
+
+    ret = gnutls_priority_set_direct(sess, prio, NULL);
+    if (ret < 0) {
+        error_setg(errp, "Unable to set TLS session priority %s: %s",
+                   prio, gnutls_strerror(ret));
+        return false;
+    }
+
+    if (creds->endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
+        ret = gnutls_credentials_set(sess,
+                                     GNUTLS_CRD_PSK,
+                                     pcreds->data.server);
+    } else {
+        ret = gnutls_credentials_set(sess,
+                                     GNUTLS_CRD_PSK,
+                                     pcreds->data.client);
+    }
+    if (ret < 0) {
+        error_setg(errp, "Cannot set session credentials: %s",
+                   gnutls_strerror(ret));
+        return false;
+    }
+    return true;
+}
+
 #else /* ! CONFIG_GNUTLS */
 
 
@@ -193,6 +248,15 @@ qcrypto_tls_creds_psk_unload(QCryptoTLSCredsPSK *creds G_GNUC_UNUSED)
     /* nada */
 }
 
+
+static bool
+qcrypto_tls_creds_psk_apply(QCryptoTLSCreds *creds,
+                            void *sess,
+                            Error **errp)
+{
+    error_setg(errp, "TLS credentials support requires GNUTLS");
+    return false;
+}
 
 #endif /* ! CONFIG_GNUTLS */
 
@@ -239,8 +303,10 @@ static void
 qcrypto_tls_creds_psk_class_init(ObjectClass *oc, const void *data)
 {
     UserCreatableClass *ucc = USER_CREATABLE_CLASS(oc);
+    QCryptoTLSCredsClass *cc = QCRYPTO_TLS_CREDS_CLASS(oc);
 
     ucc->complete = qcrypto_tls_creds_psk_complete;
+    cc->apply = qcrypto_tls_creds_psk_apply;
 
     object_class_property_add_str(oc, "username",
                                   qcrypto_tls_creds_psk_prop_get_username,
