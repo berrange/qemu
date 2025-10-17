@@ -732,6 +732,77 @@ qcrypto_tls_creds_x509_files_validate(QCryptoTLSCredsX509 *creds,
 
 
 static int
+qcrypto_tls_creds_x509_files_load(QCryptoTLSCredsX509 *creds,
+                                  QCryptoTLSCredsX509Files *files,
+                                  gnutls_certificate_credentials_t data,
+                                  Error **errp)
+{
+    int ret;
+
+    if (creds->sanityCheck &&
+        qcrypto_tls_creds_x509_sanity_check(creds,
+            creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER,
+            files->cacert, files->cert, errp) < 0) {
+        return -1;
+    }
+
+    ret = gnutls_certificate_set_x509_trust_file(data,
+                                                 files->cacert,
+                                                 GNUTLS_X509_FMT_PEM);
+    if (ret < 0) {
+        error_setg(errp, "Cannot load CA certificate '%s': %s",
+                   files->cacert, gnutls_strerror(ret));
+        return -1;
+    }
+
+    if (files->cert != NULL && files->key != NULL) {
+        char *password = NULL;
+        if (creds->passwordid) {
+            password = qcrypto_secret_lookup_as_utf8(creds->passwordid,
+                                                     errp);
+            if (!password) {
+                return -1;
+            }
+        }
+        ret = gnutls_certificate_set_x509_key_file2(data,
+                                                    files->cert, files->key,
+                                                    GNUTLS_X509_FMT_PEM,
+                                                    password,
+                                                    0);
+        g_free(password);
+        if (ret < 0) {
+            error_setg(errp, "Cannot load certificate '%s' & key '%s': %s",
+                       files->cert, files->key, gnutls_strerror(ret));
+            return -1;
+        }
+    }
+
+    if (files->cacrl != NULL) {
+        ret = gnutls_certificate_set_x509_crl_file(data,
+                                                   files->cacrl,
+                                                   GNUTLS_X509_FMT_PEM);
+        if (ret < 0) {
+            error_setg(errp, "Cannot load CRL '%s': %s",
+                       files->cacrl, gnutls_strerror(ret));
+            return -1;
+        }
+    }
+
+    if (creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
+        if (qcrypto_tls_creds_get_dh_params_file(&creds->parent_obj,
+                                                 files->dhparams,
+                                                 &creds->parent_obj.dh_params,
+                                                 errp) < 0) {
+            return -1;
+        }
+        gnutls_certificate_set_dh_params(data,
+                                         creds->parent_obj.dh_params);
+    }
+
+    return 0;
+}
+
+static int
 qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
                             Error **errp)
 {
@@ -756,13 +827,6 @@ qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
         return -1;
     }
 
-    if (creds->sanityCheck &&
-        qcrypto_tls_creds_x509_sanity_check(creds,
-            creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER,
-            files->cacert, files->cert, errp) < 0) {
-        return -1;
-    }
-
     ret = gnutls_certificate_allocate_credentials(&creds->data);
     if (ret < 0) {
         error_setg(errp, "Cannot allocate credentials: '%s'",
@@ -770,57 +834,12 @@ qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
         return -1;
     }
 
-    ret = gnutls_certificate_set_x509_trust_file(creds->data,
-                                                 files->cacert,
-                                                 GNUTLS_X509_FMT_PEM);
-    if (ret < 0) {
-        error_setg(errp, "Cannot load CA certificate '%s': %s",
-                   files->cacert, gnutls_strerror(ret));
+    if (qcrypto_tls_creds_x509_files_load(creds,
+                                          files,
+                                          creds->data,
+                                          errp) < 0) {
+        g_clear_pointer(&creds->data, gnutls_certificate_free_credentials);
         return -1;
-    }
-
-    if (files->cert != NULL && files->key != NULL) {
-        char *password = NULL;
-        if (creds->passwordid) {
-            password = qcrypto_secret_lookup_as_utf8(creds->passwordid,
-                                                     errp);
-            if (!password) {
-                return -1;
-            }
-        }
-        ret = gnutls_certificate_set_x509_key_file2(creds->data,
-                                                    files->cert, files->key,
-                                                    GNUTLS_X509_FMT_PEM,
-                                                    password,
-                                                    0);
-        g_free(password);
-        if (ret < 0) {
-            error_setg(errp, "Cannot load certificate '%s' & key '%s': %s",
-                       files->cert, files->key, gnutls_strerror(ret));
-            return -1;
-        }
-    }
-
-    if (files->cacrl != NULL) {
-        ret = gnutls_certificate_set_x509_crl_file(creds->data,
-                                                   files->cacrl,
-                                                   GNUTLS_X509_FMT_PEM);
-        if (ret < 0) {
-            error_setg(errp, "Cannot load CRL '%s': %s",
-                       files->cacrl, gnutls_strerror(ret));
-            return -1;
-        }
-    }
-
-    if (creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
-        if (qcrypto_tls_creds_get_dh_params_file(&creds->parent_obj,
-                                                 files->dhparams,
-                                                 &creds->parent_obj.dh_params,
-                                                 errp) < 0) {
-            return -1;
-        }
-        gnutls_certificate_set_dh_params(creds->data,
-                                         creds->parent_obj.dh_params);
     }
 
     return 0;
