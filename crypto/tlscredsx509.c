@@ -601,45 +601,133 @@ qcrypto_tls_creds_x509_files_free(QCryptoTLSCredsX509Files *files)
 }
 
 static QCryptoTLSCredsX509Files *
-qcrypto_tls_creds_x509_files_new_default(QCryptoTLSCredsX509 *creds,
-                                         Error **errp)
+qcrypto_tls_creds_x509_files_new_default(QCryptoTLSCredsX509 *creds)
 {
-    g_autoptr(QCryptoTLSCredsX509Files) files =
-        g_new0(QCryptoTLSCredsX509Files, 1);
+    QCryptoTLSCredsX509Files *files = g_new0(QCryptoTLSCredsX509Files, 1);
+
+    files->cacert = g_build_filename(creds->parent_obj.dir,
+                                     QCRYPTO_TLS_CREDS_X509_CA_CERT,
+                                     NULL);
 
     if (creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
-        if (qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_CA_CERT,
-                                       true, &files->cacert, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_CA_CRL,
-                                       false, &files->cacrl, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
+        files->cacrl = g_build_filename(creds->parent_obj.dir,
+                                        QCRYPTO_TLS_CREDS_X509_CA_CRL,
+                                        NULL);
+        files->cert = g_build_filename(creds->parent_obj.dir,
                                        QCRYPTO_TLS_CREDS_X509_SERVER_CERT,
-                                       true, &files->cert, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_SERVER_KEY,
-                                       true, &files->key, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_DH_PARAMS,
-                                       false, &files->dhparams, errp) < 0) {
-            return NULL;
-        }
+                                       NULL);
+        files->key = g_build_filename(creds->parent_obj.dir,
+                                      QCRYPTO_TLS_CREDS_X509_SERVER_KEY,
+                                      NULL);
+        files->dhparams = g_build_filename(creds->parent_obj.dir,
+                                           QCRYPTO_TLS_CREDS_DH_PARAMS,
+                                           NULL);
     } else {
-        if (qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_CA_CERT,
-                                       true, &files->cacert, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
+        files->cert = g_build_filename(creds->parent_obj.dir,
                                        QCRYPTO_TLS_CREDS_X509_CLIENT_CERT,
-                                       false, &files->cert, errp) < 0 ||
-            qcrypto_tls_creds_get_path(&creds->parent_obj,
-                                       QCRYPTO_TLS_CREDS_X509_CLIENT_KEY,
-                                       false, &files->key, errp) < 0) {
-            return NULL;
-        }
+                                       NULL);
+        files->key = g_build_filename(creds->parent_obj.dir,
+                                      QCRYPTO_TLS_CREDS_X509_CLIENT_KEY,
+                                      NULL);
     }
 
-    return g_steal_pointer(&files);
+    return files;
+}
+
+
+static int
+qcrypto_tls_creds_x509_file_check(const char *file,
+                                  bool *exists,
+                                  Error **errp)
+{
+    int ret = access(file, R_OK);
+    if (exists) {
+        *exists = ret == 0;
+    }
+    if (ret < 0 && errno != ENOENT) {
+        error_setg_errno(errp, errno,
+                         "Unable to access '%s'",
+                         file);
+        return -1;
+    }
+
+    return 0;
+}
+
+
+static int
+qcrypto_tls_creds_x509_files_validate(QCryptoTLSCredsX509 *creds,
+                                      QCryptoTLSCredsX509Files *files,
+                                      Error **errp)
+{
+    bool cacertexists;
+    bool cacrlexists = false;
+    bool certexists;
+    bool keyexists;
+    bool dhparamsexists = false;
+
+    if (qcrypto_tls_creds_x509_file_check(files->cacert, &cacertexists, errp) < 0 ||
+        (files->cacrl &&
+         qcrypto_tls_creds_x509_file_check(files->cacrl, &cacrlexists, errp) < 0) ||
+        qcrypto_tls_creds_x509_file_check(files->cert, &certexists, errp) < 0 ||
+        qcrypto_tls_creds_x509_file_check(files->key, &keyexists, errp) < 0 ||
+        (files->dhparams &&
+         qcrypto_tls_creds_x509_file_check(files->dhparams, &dhparamsexists, errp) < 0)) {
+        return -1;
+    }
+
+    if (!cacertexists) {
+        if (cacrlexists) {
+            error_setg(errp, "CA CRL '%s' is present, but CA cert '%s' is missing",
+                       files->cacrl, files->cacert);
+            return -1;
+        }
+        if (certexists) {
+            error_setg(errp, "Cert '%s' is present, but CA cert '%s' is missing",
+                       files->cert, files->cacert);
+            return -1;
+        }
+        if (keyexists) {
+            error_setg(errp, "Key '%s' is present, but CA cert '%s' is missing",
+                       files->key, files->cacert);
+            return -1;
+        }
+        if (dhparamsexists) {
+            error_setg(errp, "DH params '%s' is present, but CA cert '%s' is missing",
+                       files->dhparams, files->cacert);
+            return -1;
+        }
+
+        return 0;
+    } else {
+        if (certexists && !keyexists) {
+            error_setg(errp, "Cert '%s' is present, but key '%s' is missing",
+                       files->cert, files->key);
+            return -1;
+        }
+        if (!certexists && keyexists) {
+            error_setg(errp, "Key '%s' is present, but cert '%s' is missing",
+                       files->key, files->cert);
+            return -1;
+        }
+        if (!keyexists && !certexists) {
+            if (creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
+                error_setg(errp, "Cert '%s' and key '%s' are missing",
+                           files->cert, files->key);
+                return -1;
+            } else {
+                g_clear_pointer(&files->cert, g_free);
+                g_clear_pointer(&files->key, g_free);
+            }
+        }
+        if (!cacrlexists) {
+            g_clear_pointer(&files->cacrl, g_free);
+        }
+        if (!dhparamsexists) {
+            g_clear_pointer(&files->dhparams, g_free);
+        }
+        return 1;
+    }
 }
 
 
@@ -657,8 +745,14 @@ qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
 
     trace_qcrypto_tls_creds_x509_load(creds, creds->parent_obj.dir);
 
-    files = qcrypto_tls_creds_x509_files_new_default(creds, errp);
-    if (!files) {
+    files = qcrypto_tls_creds_x509_files_new_default(creds);
+
+    ret = qcrypto_tls_creds_x509_files_validate(creds, files, errp);
+    if (ret < 0) {
+        return -1;
+    }
+    if (ret == 0) {
+        error_setg(errp, "CA cert '%s' is missing", files->cacert);
         return -1;
     }
 
