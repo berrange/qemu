@@ -637,6 +637,49 @@ qcrypto_tls_creds_x509_files_new_default(QCryptoTLSCredsX509 *creds)
 }
 
 
+static QCryptoTLSCredsX509Files *
+qcrypto_tls_creds_x509_files_new_indexed(QCryptoTLSCredsX509 *creds,
+                                         size_t i)
+{
+    g_autofree char *cacert = g_strdup_printf(
+        QCRYPTO_TLS_CREDS_X509_CA_CERT_FMT_N, i);
+    g_autofree char *cacrl = g_strdup_printf(
+        QCRYPTO_TLS_CREDS_X509_CA_CRL_FMT_N, i);
+    g_autofree char *servercert = g_strdup_printf(
+        QCRYPTO_TLS_CREDS_X509_SERVER_CERT_FMT_N, i);
+    g_autofree char *serverkey = g_strdup_printf(
+        QCRYPTO_TLS_CREDS_X509_SERVER_KEY_FMT_N, i);
+    g_autofree char *clientcert = g_strdup_printf(
+        QCRYPTO_TLS_CREDS_X509_CLIENT_CERT_FMT_N, i);
+    g_autofree char *clientkey = g_strdup_printf(
+        QCRYPTO_TLS_CREDS_X509_CLIENT_KEY_FMT_N, i);
+    g_autofree char *dhparams = g_strdup_printf(
+        QCRYPTO_TLS_CREDS_DH_PARAMS_FMT_N, i);
+    QCryptoTLSCredsX509Files *files = g_new0(QCryptoTLSCredsX509Files, 1);
+
+    files->cacert = g_build_filename(creds->parent_obj.dir,
+                                     cacert, NULL);
+
+    if (creds->parent_obj.endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
+        files->cacrl = g_build_filename(creds->parent_obj.dir,
+                                        cacrl, NULL);
+        files->cert = g_build_filename(creds->parent_obj.dir,
+                                       servercert, NULL);
+        files->key = g_build_filename(creds->parent_obj.dir,
+                                      serverkey, NULL);
+        files->dhparams = g_build_filename(creds->parent_obj.dir,
+                                           dhparams, NULL);
+    } else {
+        files->cert = g_build_filename(creds->parent_obj.dir,
+                                       clientcert, NULL);
+        files->key = g_build_filename(creds->parent_obj.dir,
+                                      clientkey, NULL);
+    }
+
+    return files;
+}
+
+
 static int
 qcrypto_tls_creds_x509_file_check(const char *file,
                                   bool *exists,
@@ -810,6 +853,9 @@ qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
 {
     int ret;
     g_autoptr(QCryptoTLSCredsX509Files) files = NULL;
+    g_autoptr(QCryptoTLSCredsX509Files) filesZero = NULL;
+    bool defaultPresent;
+    bool indexPresent = false;
 
     if (!creds->parent_obj.dir) {
         error_setg(errp, "Missing 'dir' property value");
@@ -824,26 +870,78 @@ qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
     if (ret < 0) {
         return -1;
     }
-    if (ret == 0) {
-        error_setg(errp, "CA cert '%s' is missing", files->cacert);
-        return -1;
+    defaultPresent = (ret == 1);
+
+    for (size_t i = 0; i < QCRYPTO_TLS_CREDS_X509_DATA_MAX; i++) {
+        gnutls_certificate_credentials_t data;
+        g_autoptr(QCryptoTLSCredsX509Files) filesIdx = NULL;
+
+        filesIdx = qcrypto_tls_creds_x509_files_new_indexed(creds, i);
+
+        ret = qcrypto_tls_creds_x509_files_validate(creds, filesIdx, errp);
+
+        if (ret < 0) {
+            return -1;
+        }
+        if (ret == 0) {
+            if (i == 0) {
+                filesZero = g_steal_pointer(&filesIdx);
+            }
+            continue;
+        }
+
+        indexPresent = true;
+
+        ret = gnutls_certificate_allocate_credentials(&data);
+        if (ret < 0) {
+            error_setg(errp, "Cannot allocate credentials: '%s'",
+                       gnutls_strerror(ret));
+            return -1;
+        }
+
+        if (qcrypto_tls_creds_x509_files_load(creds,
+                                              filesIdx,
+                                              data,
+                                              errp) < 0) {
+            gnutls_certificate_free_credentials(data);
+            return -1;
+        }
+
+        creds->data[creds->ndata++] = data;
+        if (i == 0) {
+            filesZero = g_steal_pointer(&filesIdx);
+        }
     }
 
-    ret = gnutls_certificate_allocate_credentials(&(creds->data[0]));
-    if (ret < 0) {
-        error_setg(errp, "Cannot allocate credentials: '%s'",
-                   gnutls_strerror(ret));
-        return -1;
-    }
+    if (defaultPresent) {
+        if (indexPresent) {
+            error_setg(errp, "Saw both old style CA cert '%s' and new style '%s'",
+                       files->cacert, filesZero->cacert);
+            return -1;
+        }
 
-    if (qcrypto_tls_creds_x509_files_load(creds,
-                                          files,
-                                          creds->data[0],
-                                          errp) < 0) {
-        g_clear_pointer(&(creds->data[0]), gnutls_certificate_free_credentials);
-        return -1;
+        ret = gnutls_certificate_allocate_credentials(&(creds->data[0]));
+        if (ret < 0) {
+            error_setg(errp, "Cannot allocate credentials: '%s'",
+                       gnutls_strerror(ret));
+            return -1;
+        }
+
+        if (qcrypto_tls_creds_x509_files_load(creds,
+                                              files,
+                                              creds->data[0],
+                                              errp) < 0) {
+            g_clear_pointer(&(creds->data[0]), gnutls_certificate_free_credentials);
+            return -1;
+        }
+        creds->ndata++;
+    } else {
+        if (!indexPresent) {
+            error_setg(errp, "CA cert '%s' / '%s' is missing",
+                       files->cacert, filesZero->cacert);
+            return -1;
+        }
     }
-    creds->ndata++;
 
     return 0;
 }

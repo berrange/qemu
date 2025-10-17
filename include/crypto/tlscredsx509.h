@@ -38,6 +38,12 @@ typedef struct QCryptoTLSCredsX509Class QCryptoTLSCredsX509Class;
 #define QCRYPTO_TLS_CREDS_X509_CLIENT_KEY "client-key.pem"
 #define QCRYPTO_TLS_CREDS_X509_CLIENT_CERT "client-cert.pem"
 
+#define QCRYPTO_TLS_CREDS_X509_CA_CERT_FMT_N "ca-cert-%zu.pem"
+#define QCRYPTO_TLS_CREDS_X509_CA_CRL_FMT_N "ca-crl-%zu.pem"
+#define QCRYPTO_TLS_CREDS_X509_SERVER_KEY_FMT_N "server-key-%zu.pem"
+#define QCRYPTO_TLS_CREDS_X509_SERVER_CERT_FMT_N "server-cert-%zu.pem"
+#define QCRYPTO_TLS_CREDS_X509_CLIENT_KEY_FMT_N "client-key-%zu.pem"
+#define QCRYPTO_TLS_CREDS_X509_CLIENT_CERT_FMT_N "client-cert-%zu.pem"
 
 /**
  * QCryptoTLSCredsX509:

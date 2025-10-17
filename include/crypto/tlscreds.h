@@ -32,6 +32,7 @@ DECLARE_OBJ_CHECKERS(QCryptoTLSCreds, QCryptoTLSCredsClass, QCRYPTO_TLS_CREDS,
 
 
 #define QCRYPTO_TLS_CREDS_DH_PARAMS "dh-params.pem"
+#define QCRYPTO_TLS_CREDS_DH_PARAMS_FMT_N "dh-params-%zu.pem"
 
 typedef bool (*QCryptoTLSCredsReload)(QCryptoTLSCreds *, Error **);
 typedef bool (*QCryptoTLSCredsApply)(QCryptoTLSCreds *, void *, Error **);

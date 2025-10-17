@@ -27,11 +27,14 @@
 
 #define WORKDIR "tests/test-crypto-tlscredsx509-work/"
 #define KEYFILE WORKDIR "key-ctx.pem"
+#define CERT_DIR "tests/test-crypto-tlscredsx509-certs/"
 
 struct QCryptoTLSCredsTestData {
     bool isServer;
     const char *cacrt;
     const char *crt;
+    bool defaultNaming;
+    int indexNamingMask;
     bool expectFail;
 };
 
@@ -59,6 +62,48 @@ static QCryptoTLSCreds *test_tls_creds_create(QCryptoTLSCredsEndpoint endpoint,
     return QCRYPTO_TLS_CREDS(creds);
 }
 
+static void
+test_tls_creds_files(struct QCryptoTLSCredsTestData *data,
+                     bool create,
+                     const char *cacert,
+                     const char *servercert,
+                     const char *serverkey,
+                     const char *clientcert,
+                     const char *clientkey)
+{
+    g_autofree char *cacertfile = g_build_filename(CERT_DIR, cacert, NULL);
+    g_autofree char *servercertfile = g_build_filename(CERT_DIR, servercert, NULL);
+    g_autofree char *serverkeyfile = g_build_filename(CERT_DIR, serverkey, NULL);
+    g_autofree char *clientcertfile = g_build_filename(CERT_DIR, clientcert, NULL);
+    g_autofree char *clientkeyfile = g_build_filename(CERT_DIR, clientkey, NULL);
+
+    unlink(cacertfile);
+    if (data->isServer) {
+        unlink(servercertfile);
+        unlink(serverkeyfile);
+    } else {
+        unlink(clientcertfile);
+        unlink(clientkeyfile);
+    }
+
+    if (create) {
+        if (access(data->cacrt, R_OK) == 0) {
+            g_assert(link(data->cacrt, cacertfile) == 0);
+        }
+        if (data->isServer) {
+            if (access(data->crt, R_OK) == 0) {
+                g_assert(link(data->crt, servercertfile) == 0);
+                g_assert(link(KEYFILE, serverkeyfile) == 0);
+            }
+        } else {
+            if (access(data->crt, R_OK) == 0) {
+                g_assert(link(data->crt, clientcertfile) == 0);
+                g_assert(link(KEYFILE, clientkeyfile) == 0);
+            }
+        }
+    }
+}
+
 /*
  * This tests sanity checking of our own certificates
  *
@@ -75,36 +120,32 @@ static void test_tls_creds(const void *opaque)
     QCryptoTLSCreds *creds;
     Error *err = NULL;
 
-#define CERT_DIR "tests/test-crypto-tlscredsx509-certs/"
     g_mkdir_with_parents(CERT_DIR, 0700);
 
-    unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_CA_CERT);
-    if (data->isServer) {
-        unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_SERVER_CERT);
-        unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_SERVER_KEY);
-    } else {
-        unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_CLIENT_CERT);
-        unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_CLIENT_KEY);
-    }
+    test_tls_creds_files(data,
+                         data->defaultNaming,
+                         QCRYPTO_TLS_CREDS_X509_CA_CERT,
+                         QCRYPTO_TLS_CREDS_X509_SERVER_CERT,
+                         QCRYPTO_TLS_CREDS_X509_SERVER_KEY,
+                         QCRYPTO_TLS_CREDS_X509_CLIENT_CERT,
+                         QCRYPTO_TLS_CREDS_X509_CLIENT_KEY);
 
-    if (access(data->cacrt, R_OK) == 0) {
-        g_assert(link(data->cacrt,
-                      CERT_DIR QCRYPTO_TLS_CREDS_X509_CA_CERT) == 0);
-    }
-    if (data->isServer) {
-        if (access(data->crt, R_OK) == 0) {
-            g_assert(link(data->crt,
-                          CERT_DIR QCRYPTO_TLS_CREDS_X509_SERVER_CERT) == 0);
-            g_assert(link(KEYFILE,
-                          CERT_DIR QCRYPTO_TLS_CREDS_X509_SERVER_KEY) == 0);
-        }
-    } else {
-        if (access(data->crt, R_OK) == 0) {
-            g_assert(link(data->crt,
-                          CERT_DIR QCRYPTO_TLS_CREDS_X509_CLIENT_CERT) == 0);
-            g_assert(link(KEYFILE,
-                          CERT_DIR QCRYPTO_TLS_CREDS_X509_CLIENT_KEY) == 0);
-        }
+    for (size_t i = 0; i < 5; i++) {
+        g_autofree char *cacert = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_CA_CERT_FMT_N, i);
+        g_autofree char *servercert = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_SERVER_CERT_FMT_N, i);
+        g_autofree char *serverkey = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_SERVER_KEY_FMT_N, i);
+        g_autofree char *clientcert = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_CLIENT_CERT_FMT_N, i);
+        g_autofree char *clientkey = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_CLIENT_KEY_FMT_N, i);
+
+        test_tls_creds_files(data,
+                             data->indexNamingMask & (1 << i),
+                             cacert, servercert, serverkey,
+                             clientcert, clientkey);
     }
 
     creds = test_tls_creds_create(
@@ -122,14 +163,30 @@ static void test_tls_creds(const void *opaque)
         g_assert(creds != NULL);
     }
 
-    unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_CA_CERT);
-    if (data->isServer) {
-        unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_SERVER_CERT);
-        unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_SERVER_KEY);
-    } else {
-        unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_CLIENT_CERT);
-        unlink(CERT_DIR QCRYPTO_TLS_CREDS_X509_CLIENT_KEY);
+    test_tls_creds_files(data, true,
+                         QCRYPTO_TLS_CREDS_X509_CA_CERT,
+                         QCRYPTO_TLS_CREDS_X509_SERVER_CERT,
+                         QCRYPTO_TLS_CREDS_X509_SERVER_KEY,
+                         QCRYPTO_TLS_CREDS_X509_CLIENT_CERT,
+                         QCRYPTO_TLS_CREDS_X509_CLIENT_KEY);
+
+    for (size_t i = 0; i < 5; i++) {
+        g_autofree char *cacert = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_CA_CERT_FMT_N, i);
+        g_autofree char *servercert = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_SERVER_CERT_FMT_N, i);
+        g_autofree char *serverkey = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_SERVER_KEY_FMT_N, i);
+        g_autofree char *clientcert = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_CLIENT_CERT_FMT_N, i);
+        g_autofree char *clientkey = g_strdup_printf(
+            QCRYPTO_TLS_CREDS_X509_CLIENT_KEY_FMT_N, i);
+
+        test_tls_creds_files(data, true,
+                             cacert, servercert, serverkey,
+                             clientcert, clientkey);
     }
+
     rmdir(CERT_DIR);
     if (creds) {
         object_unparent(OBJECT(creds));
@@ -148,12 +205,17 @@ int main(int argc, char **argv)
 
     test_tls_init(KEYFILE);
 
-# define TLS_TEST_REG(name, isServer, caCrt, crt, expectFail)           \
-    struct QCryptoTLSCredsTestData name = {                             \
-        isServer, caCrt, crt, expectFail                                \
-    };                                                                  \
-    g_test_add_data_func("/qcrypto/tlscredsx509/" # name,               \
-                         &name, test_tls_creds);                        \
+# define TLS_TEST_REG_FULL(name, isServer, caCrt, crt, defaultNaming,  \
+                            indexNamingMask, expectFail)               \
+    struct QCryptoTLSCredsTestData name = {                            \
+        isServer, caCrt, crt, defaultNaming,                           \
+        indexNamingMask, expectFail                                    \
+    };                                                                 \
+    g_test_add_data_func("/qcrypto/tlscredsx509/" # name,              \
+                         &name, test_tls_creds)
+
+# define TLS_TEST_REG(name, isServer, caCrt, crt, expectFail) \
+    TLS_TEST_REG_FULL(name, isServer, caCrt, crt, true, 0, expectFail)
 
     /* A perfect CA, perfect client & perfect server */
 
@@ -184,6 +246,26 @@ int main(int argc, char **argv)
                  cacertreq.filename, servercertreq.filename, false);
     TLS_TEST_REG(perfectclient, false,
                  cacertreq.filename, clientcertreq.filename, false);
+
+    /* New style indexed file naming, one set */
+    TLS_TEST_REG_FULL(perfectserverindexone, true,
+                      cacertreq.filename, servercertreq.filename,
+                      false,
+                      (1 << 0),
+                      false);
+    /* New style indexed file naming, many sets, with gap */
+    TLS_TEST_REG_FULL(perfectserverindexmany, true,
+                      cacertreq.filename, servercertreq.filename,
+                      false,
+                      (1 << 0) | (1 << 1) | (1 << 3),
+                      false);
+
+    /* Can't have old & new stye filenaming concurrently */
+    TLS_TEST_REG_FULL(perfectserverindexdupe, true,
+                      cacertreq.filename, servercertreq.filename,
+                      true,
+                      (1 << 0),
+                      true);
 
 
     /* Some other CAs which are good */
