@@ -33,11 +33,13 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
+/* Number of parallel sets of certificates permitted */
+#define QCRYPTO_TLS_CREDS_X509_DATA_MAX 5
+
 struct QCryptoTLSCredsX509 {
     QCryptoTLSCreds parent_obj;
-#ifdef CONFIG_GNUTLS
-    gnutls_certificate_credentials_t data;
-#endif
+    gnutls_certificate_credentials_t data[QCRYPTO_TLS_CREDS_X509_DATA_MAX];
+    size_t ndata;
     bool sanityCheck;
     char *passwordid;
 };
@@ -827,7 +829,7 @@ qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
         return -1;
     }
 
-    ret = gnutls_certificate_allocate_credentials(&creds->data);
+    ret = gnutls_certificate_allocate_credentials(&(creds->data[0]));
     if (ret < 0) {
         error_setg(errp, "Cannot allocate credentials: '%s'",
                    gnutls_strerror(ret));
@@ -836,11 +838,12 @@ qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
 
     if (qcrypto_tls_creds_x509_files_load(creds,
                                           files,
-                                          creds->data,
+                                          creds->data[0],
                                           errp) < 0) {
-        g_clear_pointer(&creds->data, gnutls_certificate_free_credentials);
+        g_clear_pointer(&(creds->data[0]), gnutls_certificate_free_credentials);
         return -1;
     }
+    creds->ndata++;
 
     return 0;
 }
@@ -849,9 +852,9 @@ qcrypto_tls_creds_x509_load(QCryptoTLSCredsX509 *creds,
 static void
 qcrypto_tls_creds_x509_unload(QCryptoTLSCredsX509 *creds)
 {
-    if (creds->data) {
-        gnutls_certificate_free_credentials(creds->data);
-        creds->data = NULL;
+    for (int i = 0; i < creds->ndata; i++) {
+        gnutls_certificate_free_credentials(creds->data[i]);
+        creds->data[i] = NULL;
     }
     if (creds->parent_obj.dh_params) {
         gnutls_dh_params_deinit(creds->parent_obj.dh_params);
@@ -878,13 +881,15 @@ qcrypto_tls_creds_x509_apply(QCryptoTLSCreds *creds,
                    prio, gnutls_strerror(ret));
         return false;
     }
-    ret = gnutls_credentials_set(sess,
-                                 GNUTLS_CRD_CERTIFICATE,
-                                 tcreds->data);
-    if (ret < 0) {
-        error_setg(errp, "Cannot set session credentials: %s",
-                   gnutls_strerror(ret));
-        return false;
+    for (int i = 0; i < tcreds->ndata; i++) {
+        ret = gnutls_credentials_set(sess,
+                                     GNUTLS_CRD_CERTIFICATE,
+                                     tcreds->data[i]);
+        if (ret < 0) {
+            error_setg(errp, "Cannot set session credentials: %s",
+                       gnutls_strerror(ret));
+            return false;
+        }
     }
 
     if (creds->endpoint == QCRYPTO_TLS_CREDS_ENDPOINT_SERVER) {
@@ -985,22 +990,26 @@ qcrypto_tls_creds_x509_reload(QCryptoTLSCreds *creds, Error **errp)
 {
     QCryptoTLSCredsX509 *x509_creds = QCRYPTO_TLS_CREDS_X509(creds);
     Error *local_err = NULL;
-    gnutls_certificate_credentials_t creds_data = x509_creds->data;
+    gnutls_certificate_credentials_t creds_data[QCRYPTO_TLS_CREDS_X509_DATA_MAX];
     gnutls_dh_params_t creds_dh_params = x509_creds->parent_obj.dh_params;
+    size_t creds_ndata = x509_creds->ndata;
 
-    x509_creds->data = NULL;
+    memcpy(creds_data, x509_creds->data, sizeof(x509_creds->data));
+    memset(x509_creds->data, 0, sizeof(x509_creds->data));
+    x509_creds->ndata = 0;
     x509_creds->parent_obj.dh_params = NULL;
     qcrypto_tls_creds_x509_load(x509_creds, &local_err);
     if (local_err) {
         qcrypto_tls_creds_x509_unload(x509_creds);
-        x509_creds->data = creds_data;
+        memcpy(x509_creds->data, creds_data, sizeof(creds_data));
+        x509_creds->ndata = creds_ndata;
         x509_creds->parent_obj.dh_params = creds_dh_params;
         error_propagate(errp, local_err);
         return false;
     }
 
-    if (creds_data) {
-        gnutls_certificate_free_credentials(creds_data);
+    for (int i = 0; i < creds_ndata; i++) {
+        gnutls_certificate_free_credentials(creds_data[i]);
     }
     if (creds_dh_params) {
         gnutls_dh_params_deinit(creds_dh_params);
