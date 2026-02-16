@@ -12,7 +12,8 @@ class AST2600Machine(AspeedTest):
 
     ASSET_SDK_V1100_AST2600_515 = Asset(
         'https://github.com/AspeedTech-BMC/openbmc/releases/download/v11.00/ast2600-default-515-obmc.tar.gz',
-        'ece1a934095378929780f03e7d092e562f4b33b2841b80ad7c3d12a85744c0f6')
+        'ece1a934095378929780f03e7d092e562f4b33b2841b80ad7c3d12a85744c0f6',
+        large=True)
 
     def test_arm_ast2600_evb_sdk_515(self):
         self.set_machine('ast2600-evb')

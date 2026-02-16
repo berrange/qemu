@@ -27,15 +27,30 @@ class AssetError(Exception):
     def __str__(self):
         return "%s: %s" % (self.url, self.msg)
 
+# We can't easily print progress info when downloading which makes
+# it appear that a test or precache job has hung when the transfer
+# rate is slow.
+#
+# Set a size limit for assets that we want all tests to remain
+# below. Any Asset object exceeding this limit must be declared
+# with "large=True" and downloads/precaching will be skipped
+# unless "QEMU_TEST_LARGE_ASSETS" is set.
+QEMU_TEST_LARGE_ASSET_MB = 500
+QEMU_TEST_LARGE_ASSET_BYTES = QEMU_TEST_LARGE_ASSET_MB * 1024 * 1024
+
+def allow_large_assets():
+    return os.getenv("QEMU_TEST_LARGE_ASSETS") is not None
+
 # Instances of this class must be declared as class level variables
 # starting with a name "ASSET_". This enables the pre-caching logic
 # to easily find all referenced assets and download them prior to
 # execution of the tests.
 class Asset:
 
-    def __init__(self, url, hashsum):
+    def __init__(self, url, hashsum, large=False):
         self.url = url
         self.hash = hashsum
+        self.large = large
         cache_dir_env = os.getenv('QEMU_TEST_CACHE_DIR')
         if cache_dir_env:
             self.cache_dir = Path(cache_dir_env, "download")
@@ -105,7 +120,8 @@ class Asset:
             except:
                 if os.path.exists(self.cache_file):
                     return True
-                raise
+                raise AssetError(self, "Other thread failed to download asset, not retrying",
+                                 transient=True)
             if new_size != current_size:
                 lastchange = waittime
                 current_size = new_size
@@ -139,6 +155,11 @@ class Asset:
             raise AssetError(self,
                              "Asset cache is invalid and downloads disabled")
 
+        if self.large and not allow_large_assets():
+            raise AssetError(self,
+                             "Request to download large asset without "
+                             "QEMU_TEST_LARGE_ASSETS=1 being set")
+        
         self.log.info("Downloading %s to %s...", self.url, self.cache_file)
         tmp_cache_file = self.cache_file.with_suffix(".download")
 
@@ -146,13 +167,22 @@ class Asset:
             try:
                 with tmp_cache_file.open("xb") as dst:
                     with urllib.request.urlopen(self.url) as resp:
-                        copyfileobj(resp, dst)
                         length_hdr = resp.getheader("Content-Length")
+                        length = 0
+                        if length_hdr is not None:
+                            length = int(length_hdr)
+
+                        if (not allow_large_assets() and
+                            not self.large and
+                            length > QEMU_TEST_LARGE_ASSET_BYTES):
+                            raise AssetError(self,
+                                             "Asset larger than %d MB must be declared with large=True" %
+                                             QEMU_TEST_LARGE_ASSET_MB)
+                        copyfileobj(resp, dst)
 
                 # Verify downloaded file size against length metadata, if
                 # available.
-                if length_hdr is not None:
-                    length = int(length_hdr)
+                if length != 0:
                     fsize = tmp_cache_file.stat().st_size
                     if fsize != length:
                         self.log.error("Unable to download %s: "

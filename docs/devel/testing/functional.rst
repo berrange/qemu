@@ -329,6 +329,15 @@ default, but the location can be changed by setting the
 To force the test suite to re-download the cache, even if still valid,
 set the ``QEMU_TEST_REFRESH_CACHE`` environment variable.
 
+Assets used by tests should be kept as small as practical to minimize
+the data download overheads. Note that no progress information is
+printed during the download process, so large / slow downloads can
+appear as hangs. The test framework will cap assets at 500 MB. If an
+asset larger than this is required, the Asset() object must be created
+with the ``large=True`` parameter set. Such large assets will then be
+skipped during pre-caching, and tests using the assets will be skipped
+unless the environment variable ``QEMU_TEST_LARGE_ASSETS=`` is set.
+
 Skipping tests
 --------------
 

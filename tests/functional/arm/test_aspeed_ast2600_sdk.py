@@ -16,7 +16,8 @@ class AST2600Machine(AspeedTest):
 
     ASSET_SDK_V1100_AST2600 = Asset(
         'https://github.com/AspeedTech-BMC/openbmc/releases/download/v11.00/ast2600-default-obmc.tar.gz',
-        '64d8926a7d01b649168be96c986603b5690f06391286c438a3a772c8c7039e93')
+        '64d8926a7d01b649168be96c986603b5690f06391286c438a3a772c8c7039e93',
+        large=True)
 
     def do_ast2600_pcie_test(self):
         exec_command_and_wait_for_pattern(self,
