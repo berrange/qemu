@@ -92,7 +92,10 @@ class Asset:
         except:
             if os.path.exists(self.cache_file):
                 return True
-            raise
+            raise AssetError(
+                self, "Other thread failed to download asset, not retrying",
+                transient=True)
+
         waittime = lastchange = 600
         while waittime > 0:
             sleep(1)
