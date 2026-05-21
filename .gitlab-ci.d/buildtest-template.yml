@@ -27,6 +27,10 @@
     - section_start setup "Pre-script setup"
     - JOBS=$(expr $(nproc) + 1)
     - cat /packages.txt
+    - cat /proc/mounts
+    - cat /proc/cpuinfo
+    - cat /proc/meminfo
+    - uname -a
     - section_end setup
   script:
     - export CCACHE_BASEDIR="$(pwd)"
@@ -102,6 +106,10 @@
     # Prevent logs from the build job that run earlier
     # from being duplicated in the test job artifacts
     - rm -f build/meson-logs/*
+    - cat /proc/mounts
+    - cat /proc/cpuinfo
+    - cat /proc/meminfo
+    - uname -a
 
 
 .functional_test_job_template:
@@ -126,6 +134,10 @@
     # Prevent logs from the build job that run earlier
     # from being duplicated in the test job artifacts
     - rm -f build/meson-logs/*
+    - cat /proc/mounts
+    - cat /proc/cpuinfo
+    - cat /proc/meminfo
+    - uname -a
   after_script:
     - cd build
     - du -chs ${CI_PROJECT_DIR}/*-cache
