@@ -1294,6 +1294,7 @@ static const TypeInfo ps2_kbd_info = {
     .parent        = TYPE_PS2_DEVICE,
     .instance_size = sizeof(PS2KbdState),
     .class_init    = ps2_kbd_class_init
+    .secure        = true,
 };
 
 static void ps2_mouse_class_init(ObjectClass *klass, const void *data)
@@ -1314,6 +1315,7 @@ static const TypeInfo ps2_mouse_info = {
     .parent        = TYPE_PS2_DEVICE,
     .instance_size = sizeof(PS2MouseState),
     .class_init    = ps2_mouse_class_init
+    .secure        = true,
 };
 
 static void ps2_init(Object *obj)
@@ -1340,7 +1342,8 @@ static const TypeInfo ps2_info = {
     .instance_size = sizeof(PS2State),
     .class_init    = ps2_class_init,
     .class_size    = sizeof(PS2DeviceClass),
-    .abstract      = true
+    .abstract      = true,
+    .secure        = true,
 };
 
 static void ps2_register_types(void)
