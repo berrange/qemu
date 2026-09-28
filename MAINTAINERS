@@ -4772,3 +4772,11 @@ Machine development tool
 M: Maksim Davydov <davydov-max@yandex-team.ru>
 S: Supported
 F: scripts/compare-machine-types.py
+
+Data Recorder
+M: Daniel P. Berrangé <berrange@redhat.com>
+S: Maintained
+F: util/tldr.c
+F: util/tldr-internal.h
+F: include/qemu/tldr.h
+F: tests/unit/test-util-tldr.c

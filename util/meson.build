@@ -66,6 +66,7 @@ util_ss.add(files('int128.c'))
 util_ss.add(files('memalign.c'))
 util_ss.add(files('interval-tree.c'))
 util_ss.add(files('lockcnt.c'))
+util_ss.add(files('tldr.c'))
 
 if have_system
   util_ss.add(files('crc-ccitt.c'))

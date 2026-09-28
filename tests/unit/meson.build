@@ -148,6 +148,11 @@ if have_system
       genh, qemuutil, qom
     ],
   }
+  # We "mock" override symbols which we can only easily do in
+  # normal ELF based systems
+  if host_os in ['linux', 'freebsd', 'netbsd', 'openbsd']
+      tests += {'test-util-tldr': []}
+  endif
   if config_host_data.get('CONFIG_INOTIFY1')
     tests += {'test-util-filemonitor': []}
   endif
