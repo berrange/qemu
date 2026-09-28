@@ -553,6 +553,7 @@ F: include/exec/target_long.h
 F: include/qemu/accel.h
 F: include/system/accel-*.h
 F: include/system/cpus.h
+F: include/system/signal.h
 F: include/accel/accel-*.h
 F: accel/accel-*.?
 F: accel/dummy-cpus.?
@@ -562,6 +563,7 @@ F: cpu-common.c
 F: cpu-target.c
 F: qapi/accelerator.json
 F: system/cpus.c
+F: system/signal.c
 
 Apple Silicon HVF CPUs
 M: Alexander Graf <agraf@csgraf.de>

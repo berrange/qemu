@@ -24,6 +24,7 @@ system_ss.add(files(
   'rtc.c',
   'runstate-action.c',
   'runstate.c',
+  'signal.c',
   'watchpoint.c',
 ))
 
