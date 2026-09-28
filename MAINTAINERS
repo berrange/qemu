@@ -3566,6 +3566,7 @@ F: include/monitor/hmp-completion.h
 F: tests/qtest/test-hmp.c
 F: include/qemu/qemu-print.h
 F: util/qemu-print.c
+F: stubs/monitor-puts.c
 
 Network device backends
 M: Jason Wang <jasowangio@gmail.com>

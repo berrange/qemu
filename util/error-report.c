@@ -13,6 +13,7 @@
 #include "qemu/osdep.h"
 #include "monitor/hmp.h"
 #include "qemu/error-report.h"
+#include "qemu/tldr.h"
 
 /*
  * @report_type is the type of message: error, warning or
@@ -32,28 +33,32 @@ const char *error_guest_name;
 /*
  * Print to the @hmp monitor, else to stderr.
  */
-static int G_GNUC_PRINTF(2, 0)
-error_vprintf_hmp(MonitorHMP *hmp, const char *fmt, va_list ap)
+static int G_GNUC_PRINTF(3, 0)
+error_vprintf_hmp(MonitorHMP *hmp, bool tldr, const char *fmt, va_list ap)
 {
+    g_autofree char *str = g_strdup_vprintf(fmt, ap);
+    if (qtldr_msg_enabled(QTLDR_MSG_BUCKET_TYPE_ERROR) && tldr) {
+        qtldr_msg_record(QTLDR_MSG_BUCKET_TYPE_ERROR, str);
+    }
 #ifdef CONFIG_HMP
     if (hmp) {
-        return monitor_hmp_vprintf(hmp, fmt, ap);
+        return monitor_puts(MONITOR(hmp), str);
     }
 #endif
-    return vfprintf(stderr, fmt, ap);
+    return fwrite(str, 1, strlen(str), stderr);
 }
 
 /*
  * Print to the @hmp monitor, else to stderr.
  */
-static int G_GNUC_PRINTF(2, 3)
-error_printf_hmp(MonitorHMP *hmp, const char *fmt, ...)
+static int G_GNUC_PRINTF(3, 4)
+error_printf_hmp(MonitorHMP *hmp, bool tldr, const char *fmt, ...)
 {
     va_list ap;
     int ret;
 
     va_start(ap, fmt);
-    ret = error_vprintf_hmp(hmp, fmt, ap);
+    ret = error_vprintf_hmp(hmp, tldr, fmt, ap);
     va_end(ap);
     return ret;
 }
@@ -63,7 +68,7 @@ error_printf_hmp(MonitorHMP *hmp, const char *fmt, ...)
  */
 int error_vprintf(const char *fmt, va_list ap)
 {
-    return error_vprintf_hmp(monitor_cur_hmp(), fmt, ap);
+    return error_vprintf_hmp(monitor_cur_hmp(), true, fmt, ap);
 }
 
 /*
@@ -75,7 +80,7 @@ int error_printf(const char *fmt, ...)
     int ret;
 
     va_start(ap, fmt);
-    ret = error_vprintf_hmp(monitor_cur_hmp(), fmt, ap);
+    ret = error_vprintf_hmp(monitor_cur_hmp(), true, fmt, ap);
     va_end(ap);
     return ret;
 }
@@ -193,20 +198,20 @@ static void print_loc(MonitorHMP *hmp)
     case LOC_CMDLINE:
         argp = cur_loc->ptr;
         for (i = 0; i < cur_loc->num; i++) {
-            error_printf_hmp(hmp, "%s%s", sep, argp[i]);
+            error_printf_hmp(hmp, false, "%s%s", sep, argp[i]);
             sep = " ";
         }
-        error_printf_hmp(hmp, ": ");
+        error_printf_hmp(hmp, false, ": ");
         break;
     case LOC_FILE:
-        error_printf_hmp(hmp, "%s:", (const char *)cur_loc->ptr);
+        error_printf_hmp(hmp, false, "%s:", (const char *)cur_loc->ptr);
         if (cur_loc->num) {
-            error_printf_hmp(hmp, "%d:", cur_loc->num);
+            error_printf_hmp(hmp, false, "%d:", cur_loc->num);
         }
-        error_printf_hmp(hmp, " ");
+        error_printf_hmp(hmp, false, " ");
         break;
     default:
-        error_printf_hmp(hmp, "%s", sep);
+        error_printf_hmp(hmp, false, "%s", sep);
     }
 }
 
@@ -251,15 +256,15 @@ static void vreport(report_type type, const char *fmt, va_list ap)
     case REPORT_TYPE_ERROR:
         break;
     case REPORT_TYPE_WARNING:
-        error_printf_hmp(hmp, "warning: ");
+        error_printf_hmp(hmp, false, "warning: ");
         break;
     case REPORT_TYPE_INFO:
-        error_printf_hmp(hmp, "info: ");
+        error_printf_hmp(hmp, false, "info: ");
         break;
     }
 
-    error_vprintf_hmp(hmp, fmt, ap);
-    error_printf_hmp(hmp, "\n");
+    error_vprintf_hmp(hmp, true, fmt, ap);
+    error_printf_hmp(hmp, false, "\n");
 
     if (!hmp) {
         qemu_funlockfile(stderr);
