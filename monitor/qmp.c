@@ -34,6 +34,7 @@
 #include "qobject/qjson.h"
 #include "qobject/qlist.h"
 #include "qom/object_interfaces.h"
+#include "qemu/tldr.h"
 #include "trace.h"
 
 /*
@@ -80,7 +81,8 @@ static MonitorQMP *qmp_dispatcher_current_mon;
 OBJECT_DEFINE_TYPE(MonitorQMP, monitor_qmp, MONITOR_QMP, MONITOR);
 
 static void monitor_qmp_cleanup_req_queue_locked(MonitorQMP *mon);
-static void qmp_send_response(MonitorQMP *mon, const QDict *rsp);
+static void qmp_send_response(MonitorQMP *mon, const QDict *rsp,
+                              const QObject *ctx);
 
 static void monitor_qmp_finalize(Object *obj)
 {
@@ -169,7 +171,7 @@ static void monitor_qmp_emit_event(Monitor *mon, QAPIEvent event, QDict *qdict)
         }
     }
 
-    qmp_send_response(qmp, qdict);
+    qmp_send_response(qmp, qdict, NULL);
 }
 
 static bool monitor_qmp_requires_iothread(const Monitor *mon)
@@ -243,7 +245,8 @@ static void monitor_qmp_cleanup_queue_and_resume(MonitorQMP *mon)
 
 }
 
-static void qmp_send_response(MonitorQMP *mon, const QDict *rsp)
+static void qmp_send_response(MonitorQMP *mon, const QDict *rsp,
+                              const QObject *ctx)
 {
     const QObject *data = QOBJECT(rsp);
     GString *json;
@@ -251,6 +254,30 @@ static void qmp_send_response(MonitorQMP *mon, const QDict *rsp)
     json = qobject_to_json_pretty(data, mon->pretty);
     assert(json != NULL);
     trace_monitor_qmp_respond(mon, json->str);
+
+    /*
+     * Errors are always useful to record. We recorded the
+     * command in the caller in many cases, but if not, then
+     * 'ctx' will be non-NULL and we should record it now
+     * for context.
+     */
+    if (qtldr_msg_enabled(QTLDR_MSG_BUCKET_TYPE_COMMAND) &&
+        qdict_haskey(rsp, "error")) {
+        if (ctx) {
+            g_autoptr(GString) ctxstr = qobject_to_json(ctx);
+            qtldr_msg_record(QTLDR_MSG_BUCKET_TYPE_COMMAND, ctxstr->str);
+        }
+        qtldr_msg_record(QTLDR_MSG_BUCKET_TYPE_COMMAND, json->str);
+    }
+
+    /*
+     * Capture events, since they represent changes
+     * in state or behaviour
+     */
+    if (qtldr_msg_enabled(QTLDR_MSG_BUCKET_TYPE_EVENT) &&
+        qdict_haskey(rsp, "event")) {
+        qtldr_msg_record(QTLDR_MSG_BUCKET_TYPE_EVENT, json->str);
+    }
 
     g_string_append_c(json, '\n');
     monitor_puts(&mon->parent_obj, json->str);
@@ -263,10 +290,10 @@ static void qmp_send_response(MonitorQMP *mon, const QDict *rsp)
  * Null @rsp can only happen for commands with QCO_NO_SUCCESS_RESP.
  * Nothing is emitted then.
  */
-static void monitor_qmp_respond(MonitorQMP *mon, QDict *rsp)
+static void monitor_qmp_respond(MonitorQMP *mon, QDict *rsp, QObject *ctx)
 {
     if (rsp) {
-        qmp_send_response(mon, rsp);
+        qmp_send_response(mon, rsp, ctx);
     }
 }
 
@@ -276,8 +303,32 @@ static void monitor_qmp_respond(MonitorQMP *mon, QDict *rsp)
  */
 static void monitor_qmp_dispatch(MonitorQMP *mon, QObject *req)
 {
+    QObject *ctx = req;
     QDict *rsp;
     QDict *error;
+
+    /*
+     * Capture commands which are liable to change state,
+     * i.e. exclude purely information query comamnds
+     */
+    if (qtldr_msg_enabled(QTLDR_MSG_BUCKET_TYPE_COMMAND)) {
+        QDict *cmd = qobject_to(QDict, req);
+        if (cmd != NULL) {
+            const char *cmdname = qdict_get_try_str(cmd, "execute")
+                ?: qdict_get_try_str(cmd, "exec-oob");
+            if (cmdname != NULL &&
+                !g_str_has_prefix(cmdname, "query-") &&
+                !g_str_has_prefix(cmdname, "qom-list")) {
+                g_autoptr(GString) cmdstr = qobject_to_json(req);
+                qtldr_msg_record(QTLDR_MSG_BUCKET_TYPE_COMMAND, cmdstr->str);
+                /*
+                 * Prevent recording cmd twice if the later response
+                 * is an error
+                 */
+                ctx = NULL;
+            }
+        }
+    }
 
     rsp = qmp_dispatch(mon->commands, req, qmp_oob_enabled(mon),
                        &mon->parent_obj);
@@ -294,7 +345,7 @@ static void monitor_qmp_dispatch(MonitorQMP *mon, QObject *req)
         }
     }
 
-    monitor_qmp_respond(mon, rsp);
+    monitor_qmp_respond(mon, rsp, ctx);
     qobject_unref(rsp);
 }
 
@@ -455,7 +506,7 @@ void coroutine_fn monitor_qmp_dispatcher_co(void *data)
             trace_monitor_qmp_err_in_band(error_get_pretty(req_obj->err));
             rsp = qmp_error_response(req_obj->err);
             req_obj->err = NULL;
-            monitor_qmp_respond(mon, rsp);
+            monitor_qmp_respond(mon, rsp, NULL);
             qobject_unref(rsp);
         }
 
@@ -623,7 +674,7 @@ static void monitor_qmp_event(void *opaque, QEMUChrEvent event)
             monitor_qmp_caps_reset(mon);
         }
         data = qmp_greeting(mon);
-        qmp_send_response(mon, data);
+        qmp_send_response(mon, data, NULL);
         qobject_unref(data);
         break;
     case CHR_EVENT_CLOSED:
