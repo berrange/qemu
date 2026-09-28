@@ -295,7 +295,7 @@ static QemuCond qemu_pause_cond;
 
 void qemu_init_cpu_loop(void)
 {
-    qemu_init_sigbus();
+    qemu_init_crash_signals();
     qemu_cond_init(&qemu_cpu_cond);
     qemu_cond_init(&qemu_pause_cond);
     qemu_mutex_init(&bql);

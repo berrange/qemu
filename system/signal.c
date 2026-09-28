@@ -85,7 +85,7 @@ static void sigbus_handler(int n, siginfo_t *siginfo, void *ctx)
     }
 }
 
-void qemu_init_sigbus(void)
+void qemu_init_crash_signals(void)
 {
     struct sigaction action;
 
@@ -101,7 +101,7 @@ void qemu_init_sigbus(void)
     prctl(PR_MCE_KILL, PR_MCE_KILL_SET, PR_MCE_KILL_EARLY, 0, 0);
 }
 #else /* !CONFIG_LINUX */
-void qemu_init_sigbus(void)
+void qemu_init_crash_signals(void)
 {
 }
 #endif /* !CONFIG_LINUX */

@@ -22,4 +22,4 @@
  * THE SOFTWARE.
  */
 
-void qemu_init_sigbus(void);
+void qemu_init_crash_signals(void);
