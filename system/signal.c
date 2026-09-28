@@ -27,6 +27,7 @@
 #include "hw/core/cpu.h"
 #include "system/kvm.h"
 #include "qemu/error-report.h"
+#include "qemu/tldr.h"
 
 #ifdef CONFIG_LINUX
 
@@ -48,7 +49,7 @@
 
 
 #ifdef CONFIG_LINUX
-static void sigbus_reraise(void)
+static void sigbus_reraise(siginfo_t *siginfo)
 {
     sigset_t set;
     struct sigaction action;
@@ -56,6 +57,7 @@ static void sigbus_reraise(void)
     memset(&action, 0, sizeof(action));
     action.sa_handler = SIG_DFL;
     if (!sigaction(SIGBUS, &action, NULL)) {
+        qtldr_crash_dump_signal(siginfo);
         raise(SIGBUS);
         sigemptyset(&set);
         sigaddset(&set, SIGBUS);
@@ -69,19 +71,19 @@ static void sigbus_handler(int n, siginfo_t *siginfo, void *ctx)
 {
     if (siginfo->si_code != BUS_MCEERR_AO &&
         siginfo->si_code != BUS_MCEERR_AR) {
-        sigbus_reraise();
+        sigbus_reraise(siginfo);
     }
 
     if (current_cpu) {
         /* Called asynchronously in VCPU thread.  */
         if (kvm_on_sigbus_vcpu(current_cpu, siginfo->si_code,
                                siginfo->si_addr)) {
-            sigbus_reraise();
+            sigbus_reraise(siginfo);
         }
     } else {
         /* Called synchronously (via signalfd) in main thread.  */
         if (kvm_on_sigbus(siginfo->si_code, siginfo->si_addr)) {
-            sigbus_reraise();
+            sigbus_reraise(siginfo);
         }
     }
 }
