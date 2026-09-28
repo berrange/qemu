@@ -48,8 +48,8 @@
 #endif /* CONFIG_LINUX */
 
 
-#ifdef CONFIG_LINUX
-static void sigbus_reraise(siginfo_t *siginfo)
+#ifdef CONFIG_SIGACTION
+static void sig_handler(int n, siginfo_t *siginfo, void *ctx)
 {
     sigset_t set;
     struct sigaction action;
@@ -64,26 +64,28 @@ static void sigbus_reraise(siginfo_t *siginfo)
     pthread_sigmask(SIG_UNBLOCK, &set, NULL);
 }
 
+#ifdef CONFIG_LINUX
 static void sigbus_handler(int n, siginfo_t *siginfo, void *ctx)
 {
     if (siginfo->si_code != BUS_MCEERR_AO &&
         siginfo->si_code != BUS_MCEERR_AR) {
-        sigbus_reraise(siginfo);
+        sig_handler(n, siginfo, ctx);
     }
 
     if (current_cpu) {
         /* Called asynchronously in VCPU thread.  */
         if (kvm_on_sigbus_vcpu(current_cpu, siginfo->si_code,
                                siginfo->si_addr)) {
-            sigbus_reraise(siginfo);
+            sig_handler(n, siginfo, ctx);
         }
     } else {
         /* Called synchronously (via signalfd) in main thread.  */
         if (kvm_on_sigbus(siginfo->si_code, siginfo->si_addr)) {
-            sigbus_reraise(siginfo);
+            sig_handler(n, siginfo, ctx);
         }
     }
 }
+#endif
 
 void qemu_init_crash_signals(void)
 {
@@ -106,13 +108,19 @@ void qemu_init_crash_signals(void)
      */
     memset(&action, 0, sizeof(action));
     action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+#ifdef CONFIG_LINUX
     action.sa_sigaction = sigbus_handler;
+#else
+    action.sa_sigaction = sig_handler;
+#endif
     sigaction(SIGBUS, &action, NULL);
 
+#ifdef CONFIG_LINUX
     prctl(PR_MCE_KILL, PR_MCE_KILL_SET, PR_MCE_KILL_EARLY, 0, 0);
+#endif
 }
-#else /* !CONFIG_LINUX */
+#else /* !CONFIG_SIGACTION */
 void qemu_init_crash_signals(void)
 {
 }
-#endif /* !CONFIG_LINUX */
+#endif /* !CONFIG_SIGACTION */
