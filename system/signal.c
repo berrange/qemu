@@ -56,11 +56,11 @@ static void sig_handler(int n, siginfo_t *siginfo, void *ctx)
 
     memset(&action, 0, sizeof(action));
     action.sa_handler = SIG_DFL;
-    assert(sigaction(SIGBUS, &action, NULL) == 0);
+    assert(sigaction(siginfo->si_signo, &action, NULL) == 0);
     qtldr_crash_dump_signal(siginfo);
-    raise(SIGBUS);
+    raise(siginfo->si_signo);
     sigemptyset(&set);
-    sigaddset(&set, SIGBUS);
+    sigaddset(&set, siginfo->si_signo);
     pthread_sigmask(SIG_UNBLOCK, &set, NULL);
 }
 
@@ -108,10 +108,13 @@ void qemu_init_crash_signals(void)
      */
     memset(&action, 0, sizeof(action));
     action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+    action.sa_sigaction = sig_handler;
+    sigaction(SIGSEGV, &action, NULL);
+    sigaction(SIGABRT, &action, NULL);
+    sigaction(SIGILL, &action, NULL);
+    sigaction(SIGFPE, &action, NULL);
 #ifdef CONFIG_LINUX
     action.sa_sigaction = sigbus_handler;
-#else
-    action.sa_sigaction = sig_handler;
 #endif
     sigaction(SIGBUS, &action, NULL);
 
@@ -120,7 +123,27 @@ void qemu_init_crash_signals(void)
 #endif
 }
 #else /* !CONFIG_SIGACTION */
+
+static void sig_handler(int signo)
+{
+    siginfo_t si = {
+        .si_signo = signo,
+        .si_code = 0,
+        .si_addr = 0x0,
+    };
+    assert(signal(signo, SIG_DFL) == 0);
+    qtldr_crash_dump_signal(&si);
+    raise(signo);
+}
+
 void qemu_init_crash_signals(void)
 {
+#ifndef WIN32
+    signal(SIGBUS, sig_handler);
+#endif
+    signal(SIGSEGV, sig_handler);
+    signal(SIGABRT, sig_handler);
+    signal(SIGILL, sig_handler);
+    signal(SIGFPE, sig_handler);
 }
 #endif /* !CONFIG_SIGACTION */
