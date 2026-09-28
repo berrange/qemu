@@ -9,6 +9,58 @@
 #ifndef QEMU_TLDR_H__
 #define QEMU_TLDR_H__
 
+#include "qapi/qapi-types-tldr.h"
+
+extern unsigned int qtldr_msg_enabled_mask;
+
+/**
+ * qtldr_msg_enabled:
+ * @bucket: bucket to check status for
+ *
+ * Returns: true if @bucket is enabled for recording
+ */
+#define qtldr_msg_enabled(bucket) \
+    (qtldr_msg_enabled_mask & (1 << bucket))
+
+/**
+ * qtldr_msg_record:
+ * @bucket: bucket to record into
+ * @msg: the message text to record
+ *
+ * Records @msg into @bucket, potentially overwriting
+ * old messages if the capacity is at its maximum
+ */
+void qtldr_msg_record(QTLDRMsgBucketType bucket,
+                      const char *msg);
+
+/**
+ * qtldr_msg_record_printf:
+ * @bucket: bucket to record into
+ * @fmt: the message format string to record
+ * @...: the arguments for @fmt
+ *
+ * Formats @fmt as a printf string and records the
+ * result into @bucket, potentially overwriting
+ * old messages if the capacity is at its maximum
+ */
+void qtldr_msg_record_printf(QTLDRMsgBucketType bucket,
+                             const char *fmt, ...)
+    G_GNUC_PRINTF(2, 3);
+
+/**
+ * qtldr_msg_record_vprintf:
+ * @bucket: bucket to record into
+ * @fmt: the message format string to record
+ * @ap: the arguments for @fmt
+ *
+ * Formats @fmt as a printf string and records the
+ * result into @bucket, potentially overwriting
+ * old messages if the capacity is at its maximum
+ */
+void qtldr_msg_record_vprintf(QTLDRMsgBucketType bucket,
+                              const char *fmt, va_list ap)
+    G_GNUC_PRINTF(2, 0);
+
 /**
  * qtldr_crash_dump_signal:
  * @si: signal information

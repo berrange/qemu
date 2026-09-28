@@ -8,20 +8,26 @@
 
 #include "qemu/osdep.h"
 #include "qemu/atomic.h"
+#include "qemu/thread.h"
 #include "util/tldr-internal.h"
 #include "qom/object.h"
 #include "qom/object_interfaces.h"
 #include "qapi/error.h"
 #include "qapi/qapi-commands-tldr.h"
+#include "qapi/qapi-visit-tldr.h"
 
 struct QTLDRConfig {
     Object parent;
 
     char *crash_target;
+    QTLDRMsgBucketConfigList *messages;
 };
 
+static QemuMutex qtldr_lock;
 static int qtldr_active;
 static char *qtldr_crash_target;
+QTLDRMsgBucket qtldr_msg_buckets[QTLDR_MSG_BUCKET_TYPE__MAX];
+unsigned int qtldr_msg_enabled_mask;
 
 #define TYPE_QTLDR_CONFIG "tldr-config"
 
@@ -34,6 +40,22 @@ OBJECT_DEFINE_SIMPLE_TYPE_WITH_INTERFACES(QTLDRConfig,
                                           { TYPE_USER_CREATABLE },
                                           { NULL });
 
+static char *
+qtldr_now_str_func_default(void)
+{
+    g_autoptr(GDateTime) dt = g_date_time_new_now_utc();
+    return g_date_time_format_iso8601(dt);
+}
+
+char *(*qtldr_now_str_func)(void) = qtldr_now_str_func_default;
+
+
+static void __attribute__((constructor))
+qtldr_global_init(void)
+{
+    qemu_mutex_init(&qtldr_lock);
+}
+
 
 static void
 qtldr_config_finalize(Object *obj)
@@ -41,6 +63,7 @@ qtldr_config_finalize(Object *obj)
     QTLDRConfig *cfg = QTLDR_CONFIG(obj);
 
     g_free(cfg->crash_target);
+    qapi_free_QTLDRMsgBucketConfigList(cfg->messages);
 }
 
 
@@ -60,24 +83,93 @@ qtldr_config_set_crash_target(Object *obj, const char *path, Error **errp)
     cfg->crash_target = g_strdup(path);
 }
 
+static void qtldr_config_get_messages(Object *obj, Visitor *v, const char *name,
+                                      void *opaque, Error **errp)
+{
+    QTLDRConfig *cfg = QTLDR_CONFIG(obj);
+
+    visit_type_QTLDRMsgBucketConfigList(v, name, &cfg->messages, errp);
+}
+
+static void qtldr_config_set_messages(Object *obj, Visitor *v, const char *name,
+                                      void *opaque, Error **errp)
+{
+    QTLDRConfig *cfg = QTLDR_CONFIG(obj);
+    QTLDRMsgBucketConfigList *oldmsgs;
+
+    oldmsgs = cfg->messages;
+    visit_type_QTLDRMsgBucketConfigList(v, name, &cfg->messages, errp);
+
+    qapi_free_QTLDRMsgBucketConfigList(oldmsgs);
+}
 
 static void
 qtldr_config_complete(UserCreatable *uc, Error **errp)
 {
     QTLDRConfig *cfg = QTLDR_CONFIG(uc);
+    QTLDRMsgBucketConfigList *messages = cfg->messages;
 
     /*
      * Forbid changes, since once configured, we can't safely
      * change it due to signal handlers running without ability
      * to hold mutex locks
      */
-    if (qtldr_crash_target) {
+    if (qtldr_crash_target || qtldr_msg_enabled_mask) {
         error_setg(errp, "TLDR configuration cannot be changed");
         return;
     }
 
+    /*
+     * Sanity check before changing anything, so errors don't
+     * leave us in a partially configured state
+     */
+    while (messages) {
+        QTLDRMsgBucketConfig *msgcfg = messages->value;
+        assert(msgcfg->type < QTLDR_MSG_BUCKET_TYPE__MAX);
+
+        if (msgcfg->has_capacity &&
+            msgcfg->capacity <= QTLDR_MSG_ENTRY_MAX_BYTES) {
+            error_setg(errp, "Message bucket capacity must be greater than %d",
+                       QTLDR_MSG_ENTRY_MAX_BYTES);
+            return;
+        }
+        messages = messages->next;
+    }
+
+    qemu_mutex_lock(&qtldr_lock);
     qatomic_store_release(&qtldr_crash_target, g_strdup(cfg->crash_target));
+
+    messages = cfg->messages;
+    while (messages) {
+        QTLDRMsgBucketConfig *msgcfg = messages->value;
+        assert(msgcfg->type < QTLDR_MSG_BUCKET_TYPE__MAX);
+
+        if (msgcfg->has_capacity) {
+            qtldr_msg_buckets[msgcfg->type].capacity = msgcfg->capacity;
+        } else {
+            qtldr_msg_buckets[msgcfg->type].capacity =
+                QTLDR_MSG_BUCKET_SIZE_BYTES;
+        }
+
+        qtldr_msg_enabled_mask |= (1 << msgcfg->type);
+
+        messages = messages->next;
+    }
+
+    if (!cfg->messages) {
+        size_t i;
+        qtldr_msg_enabled_mask =
+            (1 << QTLDR_MSG_BUCKET_TYPE_ERROR) |
+            (1 << QTLDR_MSG_BUCKET_TYPE_COMMAND) |
+            (1 << QTLDR_MSG_BUCKET_TYPE_EVENT) |
+            (1 << QTLDR_MSG_BUCKET_TYPE_LOG);
+        for (i = 0; i < QTLDR_MSG_BUCKET_TYPE__MAX; i++) {
+            qtldr_msg_buckets[i].capacity = QTLDR_MSG_BUCKET_SIZE_BYTES;
+        }
+    }
+
     qatomic_inc(&qtldr_active);
+    qemu_mutex_unlock(&qtldr_lock);
 }
 
 
@@ -101,6 +193,10 @@ qtldr_config_class_init(ObjectClass *klass, const void *opaque)
     object_class_property_add_str(klass, "crash-target",
                                   qtldr_config_get_crash_target,
                                   qtldr_config_set_crash_target);
+    object_class_property_add(klass, "messages", "QTLDRMsgBucketConfigList",
+                              qtldr_config_get_messages,
+                              qtldr_config_set_messages,
+                              NULL, NULL);
 
     ucc->complete = qtldr_config_complete;
     ucc->prepare_delete = qtldr_config_prepare_delete;
@@ -110,6 +206,145 @@ qtldr_config_class_init(ObjectClass *klass, const void *opaque)
 static void
 qtldr_config_init(Object *obj)
 {
+}
+
+
+/*
+ * WARNING: The data recorder is intended to be called from
+ * WARNING: many places within QEMU, including tracing, error
+ * WARNING: reporting and logging code.
+ *
+ * WARNING: The code following this marker is used in the call
+ * WARNING: chain from qtldr_msg_record() and must be self
+ * WARNING: contained and performance oriented.
+ */
+
+static void
+qtldr_msg_record_ensure_size(QTLDRMsgBucket *bucket,
+                             size_t need)
+{
+    /*
+     * If bucket is not yet at max size then we can't have
+     * wrapped the buffer and so 'head' must reflect the
+     * amount of written data so far.
+     */
+    if (bucket->allocated < bucket->capacity) {
+        size_t space = bucket->allocated - bucket->next;
+        if (space < need) {
+            size_t newlen = MIN(bucket->capacity,
+                                bucket->allocated + MAX(4096, need - space));
+            bucket->buf = g_realloc(bucket->buf, newlen);
+            /*
+             * Fill with zeros, so the dumping method
+             * knows what is unused so far.
+             */
+            memset(bucket->buf + bucket->allocated, '\0',
+                   newlen - bucket->allocated);
+            qatomic_store_release(&bucket->allocated, newlen);
+        }
+    }
+}
+
+
+static size_t
+qtldr_msg_record_append_buf(QTLDRMsgBucket *bucket,
+                            size_t next,
+                            const void *buf,
+                            size_t len)
+{
+    size_t forend = MIN(bucket->allocated - next, len);
+    size_t forfront = len - forend;
+
+    if (forend) {
+        memcpy(bucket->buf + next, buf, forend);
+    }
+    if (forfront) {
+        memcpy(bucket->buf, buf + forend, forfront);
+        return forfront;
+    } else {
+        return (next + forend) % bucket->allocated;
+    }
+}
+
+
+void
+qtldr_msg_record(QTLDRMsgBucketType type,
+                 const char *msg)
+{
+    QTLDRMsgBucket *bucket;
+    size_t msglen, timelen;
+    g_autofree char *timestr = qtldr_now_str_func();
+    bool addnl = false;
+    uint16_t recordlen;
+    size_t next;
+
+    assert(type < QTLDR_MSG_BUCKET_TYPE__MAX);
+    if (!qtldr_msg_enabled(type)) {
+        return;
+    }
+
+    qemu_mutex_lock(&qtldr_lock);
+
+    bucket = &qtldr_msg_buckets[type];
+    timelen = strlen(timestr);
+    msglen = strlen(msg);
+
+    recordlen = timelen + 1 /* " " */ + msglen;
+    if (recordlen > (QTLDR_MSG_ENTRY_MAX_BYTES - 1)) {
+        size_t cut = (QTLDR_MSG_ENTRY_MAX_BYTES - 1)  - recordlen;
+        msglen -= cut;
+        recordlen -= cut;
+    }
+
+    if (msglen && msg[msglen - 1] != '\n') {
+        addnl = true;
+        recordlen++;
+    }
+
+
+    qtldr_msg_record_ensure_size(bucket, recordlen);
+    next = qtldr_msg_record_append_buf(bucket, bucket->next, timestr, timelen);
+    next = qtldr_msg_record_append_buf(bucket, next, " ", 1);
+    next = qtldr_msg_record_append_buf(bucket, next, msg, msglen);
+    if (addnl) {
+        next = qtldr_msg_record_append_buf(bucket, next, "\n", 1);
+    }
+
+    /*
+     * We could be racing with a signal handler dumping text
+     * outside the mutex lock, so while we write text without
+     * any sync, we atomically change the "next" pointer.
+     *
+     * Worst case, some text the signal handler dumps will be
+     * "new" instead of old part of the buffer.
+     */
+    qatomic_store_release(&bucket->next, next);
+    qemu_mutex_unlock(&qtldr_lock);
+}
+
+
+void
+qtldr_msg_record_printf(QTLDRMsgBucketType type,
+                        const char *fmt, ...)
+{
+    char msg[1024];
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(msg, G_N_ELEMENTS(msg), fmt, ap);
+    va_end(ap);
+
+    qtldr_msg_record(type, msg);
+}
+
+
+void
+qtldr_msg_record_vprintf(QTLDRMsgBucketType type,
+                         const char *fmt, va_list ap)
+{
+    char msg[1024];
+    vsnprintf(msg, G_N_ELEMENTS(msg), fmt, ap);
+    qtldr_msg_record(type, msg);
 }
 
 
@@ -156,6 +391,43 @@ qtldr_write_int_hex(int fd, uint64_t v)
     char target[16];
     qtldr_write_int_buf(fd, v, digits, strlen(digits),
                         target, G_N_ELEMENTS(target));
+}
+
+
+static void
+qtldr_crash_dump_msg(int fd, QTLDRMsgBucketType type, QTLDRMsgBucket *bucket)
+{
+    size_t allocated, head;
+
+    if (!bucket->allocated) {
+        return;
+    }
+    ignore_value(write(fd, QTLDR_DUMP_MSG_BUCKET_PREFIX,
+                       strlen(QTLDR_DUMP_MSG_BUCKET_PREFIX)));
+    ignore_value(write(fd, QTLDRMsgBucketType_str(type),
+                       strlen(QTLDRMsgBucketType_str(type))));
+    ignore_value(write(fd, "':\n", 3));
+
+    /*
+     * We're potentially racing with a thread appending.
+     * Load 'head' first, so we're guaranteed it does
+     * not point beyond the 'allocated' region, should
+     * we be racing with buffer enlargement
+     */
+    head = qatomic_load_acquire(&bucket->next);
+    allocated = qatomic_load_acquire(&bucket->allocated);
+
+    /*
+     * If we haven't wrapped around yet, the allocated but
+     * unused space is filled with NULs. We can assume
+     * that no valid messages contain NULs, since we used
+     * "strlen" when writing messages originally.
+     */
+    if (bucket->buf[head] != '\0') {
+        ignore_value(write(fd, bucket->buf + head,
+                           allocated - head));
+    }
+    ignore_value(write(fd, bucket->buf, head));
 }
 
 
@@ -378,6 +650,8 @@ qtldr_crash_dump_print_siginfo(int fd, siginfo_t *si)
 void
 qtldr_crash_dump_internal(int fd, siginfo_t *si)
 {
+    size_t i;
+
     if (fd == -1) {
         fd = STDERR_FILENO;
     }
@@ -389,6 +663,10 @@ qtldr_crash_dump_internal(int fd, siginfo_t *si)
         ignore_value(write(fd, QTLDR_DUMP_TRIGGER_PREFIX,
                            strlen(QTLDR_DUMP_TRIGGER_PREFIX)));
         ignore_value(write(fd, "manual\n", 7));
+    }
+
+    for (i = 0; i < QTLDR_MSG_BUCKET_TYPE__MAX; i++) {
+        qtldr_crash_dump_msg(fd, i, &qtldr_msg_buckets[i]);
     }
 
     ignore_value(write(fd, QTLDR_DUMP_TRAILER, strlen(QTLDR_DUMP_TRAILER)));
@@ -463,7 +741,9 @@ qmp_tldr_dump(const char *target, Error **errp)
         return;
     }
 
+    qemu_mutex_lock(&qtldr_lock);
     qtldr_crash_dump_internal(fd, NULL);
+    qemu_mutex_unlock(&qtldr_lock);
 
     qemu_fdatasync(fd);
     close(fd);

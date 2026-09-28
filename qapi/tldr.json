@@ -26,3 +26,37 @@
 #     <- { "return": {} }
 ##
 { 'command': 'tldr-dump', 'data': 'QTLDRDumpOptions' }
+
+##
+# @QTLDRMsgBucketType:
+#     List of message bucket types
+#
+# @error: error messages and warnings
+# @command: QMP commands which change state and error responses
+# @event: QMP events reflecting state changes
+# @log: log messages from any subsystems
+#
+# Since: 11.2.0
+##
+{ 'enum': 'QTLDRMsgBucketType',
+  'data': ['error', 'command', 'event', 'log' ] }
+
+
+##
+# @QTLDRMsgBucketConfig:
+#     Configuration for message buckets
+#
+# @type: the message bucket to enable
+# @capacity: override the default bucket size, in bytes (64kb)
+#
+# Each bucket allocates memory on demand, so capacity merely
+# puts an upper limit on the memory usage in a bucket.  The
+# capacity must be larger than the per-message size limit,
+# which is 2048 bytes.
+#
+# Since: 11.2.0
+##
+{ 'struct': 'QTLDRMsgBucketConfig',
+  'data': { 'type': 'QTLDRMsgBucketType',
+            '*capacity': 'size' }
+}

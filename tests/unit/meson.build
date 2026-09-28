@@ -136,6 +136,7 @@ if have_system
     'test-qmp-cmds': [testqapi],
     'test-xbzrle': [migration],
     'test-util-sockets': ['socket-helpers.c'],
+    'test-util-tldr': [],
     'test-base64': [],
     'test-bufferiszero': [],
     'test-smp-parse': [qom, meson.project_source_root() / 'hw/core/machine-smp.c'],
@@ -148,11 +149,6 @@ if have_system
       genh, qemuutil, qom
     ],
   }
-  # We "mock" override symbols which we can only easily do in
-  # normal ELF based systems
-  if host_os in ['linux', 'freebsd', 'netbsd', 'openbsd']
-      tests += {'test-util-tldr': []}
-  endif
   if config_host_data.get('CONFIG_INOTIFY1')
     tests += {'test-util-filemonitor': []}
   endif

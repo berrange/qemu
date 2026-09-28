@@ -8,6 +8,7 @@
 { 'include': 'block-core.json' }
 { 'include': 'common.json' }
 { 'include': 'crypto.json' }
+{ 'include': 'tldr.json' }
 
 ##
 # ***********************
@@ -1239,11 +1240,13 @@
 #
 # @crash-target: fully qualified path to perserve data recorder
 #                contents on QEMU crash
+# @messages: custom configuration for message buckets
 #
 # Since: 11.2.0
 ##
 { 'struct': 'QTLDRConfigProperties',
-  'data': { '*crash-target': 'str' }
+  'data': { '*crash-target': 'str',
+            '*messages': ['QTLDRMsgBucketConfig'] }
 }
 
 ##
