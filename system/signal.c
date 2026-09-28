@@ -26,6 +26,7 @@
 #include "system/signal.h"
 #include "hw/core/cpu.h"
 #include "system/kvm.h"
+#include "qemu/error-report.h"
 
 #ifdef CONFIG_LINUX
 
@@ -89,12 +90,23 @@ void qemu_init_crash_signals(void)
 {
     struct sigaction action;
 
+#ifdef CONFIG_SIGALTSTACK
+    static stack_t signal_stack;
+    signal_stack.ss_sp = (void *)g_new0(char, SIGSTKSZ);
+    signal_stack.ss_size = SIGSTKSZ;
+    if (sigaltstack(&signal_stack, NULL) < 0) {
+        error_printf("unable to enable alternate signal stack: %s",
+                     strerror(errno));
+        abort();
+    }
+#endif
+
     /*
      * ALERT: when modifying this, take care that SIGBUS forwarding in
      * qemu_prealloc_mem() will continue working as expected.
      */
     memset(&action, 0, sizeof(action));
-    action.sa_flags = SA_SIGINFO;
+    action.sa_flags = SA_SIGINFO | SA_ONSTACK;
     action.sa_sigaction = sigbus_handler;
     sigaction(SIGBUS, &action, NULL);
 
