@@ -381,12 +381,28 @@ typedef struct {
     char *name;
 } QemuThreadArgs;
 
+static void qemu_thread_sigstack_free(void *data)
+{
+    stack_t sigstack = {
+        .ss_sp = NULL,
+        .ss_size = 0,
+        .ss_flags = SS_DISABLE,
+    };
+    sigaltstack(&sigstack, NULL);
+    g_free(data);
+}
+
 static void *qemu_thread_start(void *args)
 {
     QemuThreadArgs *qemu_thread_args = args;
     void *(*start_routine)(void *) = qemu_thread_args->start_routine;
     void *arg = qemu_thread_args->arg;
     void *r;
+    stack_t sigstack = {
+        .ss_sp = g_new0(char, SIGSTKSZ),
+        .ss_size = SIGSTKSZ,
+        .ss_flags = 0,
+    };
 
     if (qemu_thread_args->name) {
         qemu_thread_set_name(qemu_thread_args->name);
@@ -394,6 +410,9 @@ static void *qemu_thread_start(void *args)
     QEMU_TSAN_ANNOTATE_THREAD_NAME(qemu_thread_args->name);
     g_free(qemu_thread_args->name);
     g_free(qemu_thread_args);
+
+    sigaltstack(&sigstack, NULL);
+    pthread_cleanup_push(qemu_thread_sigstack_free, sigstack.ss_sp);
 
     /*
      * GCC 11 with glibc 2.17 on PowerPC reports
@@ -412,6 +431,7 @@ static void *qemu_thread_start(void *args)
 
     pthread_cleanup_push(qemu_thread_atexit_notify, NULL);
     r = start_routine(arg);
+    pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
 
 #pragma GCC diagnostic pop
