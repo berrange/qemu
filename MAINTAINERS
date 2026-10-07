@@ -4780,3 +4780,4 @@ F: util/tldr.c
 F: util/tldr-internal.h
 F: include/qemu/tldr.h
 F: tests/unit/test-util-tldr.c
+F: qapi/tldr.json

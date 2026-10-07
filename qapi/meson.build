@@ -49,6 +49,7 @@ qapi_all_modules = [
   'run-state',
   'sockets',
   'stats',
+  'tldr',
   'trace',
   'transaction',
   'vfio',

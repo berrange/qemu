@@ -12,6 +12,7 @@
 #include "qom/object.h"
 #include "qom/object_interfaces.h"
 #include "qapi/error.h"
+#include "qapi/qapi-commands-tldr.h"
 
 struct QTLDRConfig {
     Object parent;
@@ -435,4 +436,35 @@ qtldr_crash_dump_signal(siginfo_t *si)
         qemu_fdatasync(fd);
         close(fd);
     }
+}
+
+
+/*
+ * WARNING: Code below this marker provides a QMP handler
+ * WARNING: for use in normal execution. It calls into
+ * WARNING: the common crash report outputting APIs, but
+ * WARNING: this specific method is not restricted to async
+ * WARNING: signal safe POSIX functions.
+ */
+
+
+void
+qmp_tldr_dump(const char *target, Error **errp)
+{
+    int fd;
+
+    if (!qatomic_read(&qtldr_active)) {
+        error_setg(errp, "No 'tldr-config' object has been creted");
+        return;
+    }
+
+    fd = qemu_create(target, O_WRONLY | O_TRUNC, 0600, errp);
+    if (fd < 0) {
+        return;
+    }
+
+    qtldr_crash_dump_internal(fd, NULL);
+
+    qemu_fdatasync(fd);
+    close(fd);
 }

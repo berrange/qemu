@@ -1,0 +1,28 @@
+# -*- Mode: Python -*-
+# vim: filetype=python
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+##
+# @QTLDRDumpOptions:
+#     Options for `tldr-dump`.
+#
+# @target: the fully qualified file path to dump
+#     the data recorder to
+#
+# Since: 11.2.0
+##
+{ 'struct': 'QTLDRDumpOptions',
+  'data': { 'target': 'str' } }
+
+##
+# @tldr-dump:
+#     Dump the data recorder to a file
+#
+# Since: 11.2.0
+#
+# .. qmp-example::
+#
+#     -> { "execute": "tldr-dump", "arguments": { "target": "/tmp/qemu.txt" } }
+#     <- { "return": {} }
+##
+{ 'command': 'tldr-dump', 'data': 'QTLDRDumpOptions' }
