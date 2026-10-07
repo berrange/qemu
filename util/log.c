@@ -27,6 +27,7 @@
 #include "qemu/thread.h"
 #include "qemu/lockable.h"
 #include "qemu/rcu.h"
+#include "qemu/tldr.h"
 #ifdef CONFIG_LINUX
 #include <sys/syscall.h>
 #endif
@@ -172,12 +173,20 @@ void qemu_log_unlock(FILE *logfile)
 
 void qemu_log(const char *fmt, ...)
 {
-    FILE *f = qemu_log_trylock_with_context();
-    if (f) {
-        va_list ap;
-        va_start(ap, fmt);
-        vfprintf(f, fmt, ap);
-        va_end(ap);
+    va_list ap;
+    if (qemu_loglevel & LOG_TLDR) {
+        if (qtldr_msg_enabled(QTLDR_MSG_BUCKET_TYPE_LOG)) {
+            va_start(ap, fmt);
+            qtldr_msg_record_vprintf(QTLDR_MSG_BUCKET_TYPE_LOG, fmt, ap);
+            va_end(ap);
+        }
+    } else {
+        FILE *f = qemu_log_trylock_with_context();
+        if (f) {
+            va_start(ap, fmt);
+            vfprintf(f, fmt, ap);
+            va_end(ap);
+        }
         qemu_log_unlock(f);
     }
 }
@@ -236,6 +245,7 @@ static bool qemu_set_log_internal(const char *filename, bool changed_name,
     bool need_to_open_file;
     bool daemonized;
     bool per_thread;
+    bool tldr;
     FILE *logfile;
 
     QEMU_LOCK_GUARD(&global_mutex);
@@ -251,8 +261,20 @@ static bool qemu_set_log_internal(const char *filename, bool changed_name,
     }
 
     per_thread = log_flags & LOG_PER_THREAD;
+    tldr = log_flags & LOG_TLDR;
 
-    if (changed_name) {
+    if (tldr) {
+        if (filename) {
+            error_setg(errp, "Cannot enable TLDR with a log file");
+            return false;
+        }
+        if (per_thread) {
+            error_setg(errp, "Cannot enable TLDR with per-thread log files");
+            return false;
+        }
+    }
+
+    if (changed_name && !tldr) {
         char *newname = NULL;
 
         /*
@@ -282,7 +304,7 @@ static bool qemu_set_log_internal(const char *filename, bool changed_name,
         g_free(global_filename);
         global_filename = newname;
         filename = newname;
-    } else {
+    } else if (!tldr) {
         filename = global_filename;
         if (per_thread &&
             valid_filename_template(filename, true, errp) == vft_error) {
@@ -309,7 +331,7 @@ static bool qemu_set_log_internal(const char *filename, bool changed_name,
          * stderr or to a file (if there is a filename).
          * If per-thread, open the file for each thread in qemu_log_trylock().
          */
-        need_to_open_file = qemu_loglevel && !log_per_thread;
+        need_to_open_file = qemu_loglevel && !log_per_thread && !tldr;
     } else {
         /*
          * If we are daemonized, we will only log if there is a filename.
@@ -531,6 +553,8 @@ const QEMULogItem qemu_log_items[] = {
       "include VPU registers in the 'cpu' logging" },
     { LOG_INVALID_MEM, "invalid_mem",
       "log invalid memory accesses" },
+    { LOG_TLDR, "tldr",
+      "log to QEMU data recorder instead ofa file" },
     { 0, NULL, NULL },
 };
 
