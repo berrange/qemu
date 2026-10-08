@@ -80,6 +80,7 @@ static MonitorQMP *qmp_dispatcher_current_mon;
 OBJECT_DEFINE_TYPE(MonitorQMP, monitor_qmp, MONITOR_QMP, MONITOR);
 
 static void monitor_qmp_cleanup_req_queue_locked(MonitorQMP *mon);
+static void qmp_send_response(MonitorQMP *mon, const QDict *rsp);
 
 static void monitor_qmp_finalize(Object *obj)
 {
@@ -242,7 +243,7 @@ static void monitor_qmp_cleanup_queue_and_resume(MonitorQMP *mon)
 
 }
 
-void qmp_send_response(MonitorQMP *mon, const QDict *rsp)
+static void qmp_send_response(MonitorQMP *mon, const QDict *rsp)
 {
     const QObject *data = QOBJECT(rsp);
     GString *json;
