@@ -811,6 +811,56 @@ static void qtest_process_command(CharFrontend *chr, gchar **words)
         qtest_sendf(chr, err ? "FAIL %s\n" : "OK\n",
                     err ? error_get_pretty(err) : NULL);
         error_free(err);
+    } else if (strcmp(words[0], "crash") == 0) {
+        if (strcmp(words[1], "null-pointer") == 0) {
+            char *c = (void *)0x0;
+            *c = 'a'; /* SIGSEGV */
+        } else if (strcmp(words[1], "invalid-addr") == 0) {
+            /* Hopefully invalid addr on all supported targets */
+            char *c = (void *)0x12345;
+            *c = 'b'; /* SIGSEGV */
+#ifndef WIN32
+        } else if (strcmp(words[1], "mapping-not-backed") == 0) {
+            char *m;
+            g_autofree char *tmpname = NULL;
+            int tmpfd = g_file_open_tmp("qtestcrash-XXXXXX", &tmpname, NULL);
+            m = (char *)mmap(0, 4, PROT_WRITE, MAP_PRIVATE, tmpfd, 0);
+            unlink(tmpname);
+            assert(m != MAP_FAILED);
+            /*
+             * Since no writes have been made to 'tmpfd', the backing
+             * store is still zero-length, and thus writes should
+             * trigger a bus error
+             */
+            m[0] = 0; /* SIGBUS */
+#if defined(__x86_64__) || defined(__aarch64__)
+        } else if (strcmp(words[1], "bad-alignment") == 0) {
+            /*
+             * XXX: can we assume any other arches will generate
+             * bus errors on unaligned writes ?
+             */
+            char *cptr = g_malloc(sizeof(int) + 1) + 1;
+            int *iptr = (int *)cptr;
+#ifdef __x86_64__
+            /* Turn on alignment checks */
+            __asm__("pushf\norl $0x40000,(%rsp)\npopf");
+#endif
+            *iptr = 42; /* SIGBUS */
+#endif
+#endif
+        } else if (strcmp(words[1], "fpe-div-zero") == 0) {
+            volatile int foo = 1729; /* volatile to stop optimizing */
+            volatile int bar = 0; /* volatile to stop optimizing */
+
+            foo = foo / bar; /* SIGFPE */
+            (void)foo;
+        } else if (strcmp(words[1], "assert") == 0) {
+            assert(1 == 2); /* SIGABRT */
+        } else if (strcmp(words[1], "illegal-inst") == 0) {
+            __builtin_trap(); /* SIGILL */
+        } else {
+            qtest_sendf(chr, "FAIL unsupported crash action '%s'", words[1]);
+        }
     } else if (process_command_cb && process_command_cb(chr, words)) {
         /* Command got consumed by the callback handler */
     } else {

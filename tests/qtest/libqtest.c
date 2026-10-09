@@ -828,6 +828,32 @@ static int qtest_query_target_endianness(QTestState *s)
     return big_endian;
 }
 
+static const char *crashtypestr[] = {
+    "null-pointer",
+    "invalid-addr",
+    "mapping-not-backed",
+#if defined(__x86_64__) || defined(__aarch64__)
+    "bad-alignment",
+#endif
+    "fpe-div-zero",
+    "assert",
+    "illegal-inst",
+};
+G_STATIC_ASSERT(G_N_ELEMENTS(crashtypestr) == QTEST_CRASH__MAX);
+
+void qtest_crash(QTestState *s, QTestCrashType type)
+{
+    char buf[1024];
+    ssize_t len;
+    assert(type < QTEST_CRASH__MAX);
+    qtest_sendf(s, "crash %s\n", crashtypestr[type]);
+    len = recv(s->fd, buf, sizeof(buf), 0);
+    if (len != 0) {
+        g_printerr("Expected crash from QEMU but saw qtest reply");
+        abort();
+    }
+}
+
 QDict *qtest_qmp_receive(QTestState *s)
 {
     while (true) {

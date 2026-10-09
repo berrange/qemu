@@ -1232,4 +1232,20 @@ bool mkimg(const char *file, const char *fmt, unsigned size_mb);
  */
 bool qtest_verbose(const char *domain);
 
+typedef enum {
+    QTEST_CRASH_NULL_POINTER,
+    QTEST_CRASH_INVALID_ADDR,
+    QTEST_CRASH_MAPPING_NOT_BACKED,
+#if defined(__x86_64__) || defined(__aarch64__)
+    QTEST_CRASH_BAD_ALIGNMENT,
+#endif
+    QTEST_CRASH_FPE_DIV_ZERO,
+    QTEST_CRASH_ASSERT,
+    QTEST_CRASH_ILLEGAL_INST,
+
+    QTEST_CRASH__MAX,
+} QTestCrashType;
+
+void qtest_crash(QTestState *s, QTestCrashType type);
+
 #endif
