@@ -56,15 +56,12 @@ static void sigbus_reraise(siginfo_t *siginfo)
 
     memset(&action, 0, sizeof(action));
     action.sa_handler = SIG_DFL;
-    if (!sigaction(SIGBUS, &action, NULL)) {
-        qtldr_crash_dump_signal(siginfo);
-        raise(SIGBUS);
-        sigemptyset(&set);
-        sigaddset(&set, SIGBUS);
-        pthread_sigmask(SIG_UNBLOCK, &set, NULL);
-    }
-    perror("Failed to re-raise SIGBUS!");
-    abort();
+    assert(sigaction(SIGBUS, &action, NULL) == 0);
+    qtldr_crash_dump_signal(siginfo);
+    raise(SIGBUS);
+    sigemptyset(&set);
+    sigaddset(&set, SIGBUS);
+    pthread_sigmask(SIG_UNBLOCK, &set, NULL);
 }
 
 static void sigbus_handler(int n, siginfo_t *siginfo, void *ctx)
