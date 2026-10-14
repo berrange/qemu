@@ -27,6 +27,9 @@ qtests_generic = [
   'qmp-cmd-test',
   'qom-test',
 ]
+if host_os != 'windows'
+  qtests_generic != ['tldr-test']
+endif
 if have_hmp
   qtests_generic += [
     'test-hmp',
