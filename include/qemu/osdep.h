@@ -635,6 +635,14 @@ void sigaction_invoke(struct sigaction *action,
                       struct qemu_signalfd_siginfo *info);
 #endif
 
+#ifndef HAVE_SIGINFO_T
+typedef struct {
+    int si_signo;
+    int si_code;
+    void *si_addr;
+} siginfo_t;
+#endif
+
 /*
  * Don't introduce new usage of this function, prefer the following
  * qemu_open/qemu_create that take an "Error **errp"

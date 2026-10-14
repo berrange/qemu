@@ -2709,6 +2709,8 @@ config_host_data.set('HAVE_OPTRESET',
                      cc.has_header_symbol('getopt.h', 'optreset'))
 config_host_data.set('HAVE_IPPROTO_MPTCP',
                      cc.has_header_symbol('netinet/in.h', 'IPPROTO_MPTCP'))
+config_host_data.set('HAVE_SIGINFO_T',
+                     cc.has_header_symbol('signal.h', 'siginfo_t'))
 if libaio.found()
   config_host_data.set('HAVE_IO_PREP_PWRITEV2',
                        cc.has_header_symbol('libaio.h', 'io_prep_pwritev2'))
