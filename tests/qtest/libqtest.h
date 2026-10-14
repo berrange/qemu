@@ -1155,6 +1155,17 @@ bool qtest_probe_child(QTestState *s);
  */
 void qtest_set_expected_status(QTestState *s, int status);
 
+#ifndef _WIN32
+/**
+ * qtest_set_expected_signal:
+ * @s: QTestState instance to operate on.
+ * @signal: an expected crash signal.
+ *
+ * Set expected crash signal of the child.
+ */
+void qtest_set_expected_signal(QTestState *s, int signal);
+#endif
+
 QTestState *qtest_inproc_init(QTestState **s, bool log, const char* arch,
                     void (*send)(void*, const char*));
 

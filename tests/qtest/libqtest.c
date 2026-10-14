@@ -86,6 +86,9 @@ struct QTestState
     DWORD exit_code;
 #endif
     int expected_status;
+#ifndef _WIN32
+    int expected_signal;
+#endif
     bool big_endian;
     bool irq_level[MAX_IRQ];
     GString *rx;
@@ -185,6 +188,13 @@ void qtest_set_expected_status(QTestState *s, int status)
     s->expected_status = status;
 }
 
+#ifndef _WIN32
+void qtest_set_expected_signal(QTestState *s, int signal)
+{
+    s->expected_signal = signal;
+}
+#endif
+
 static void qtest_check_status(QTestState *s)
 {
     assert(s->qemu_pid == -1);
@@ -195,20 +205,28 @@ static void qtest_check_status(QTestState *s)
      */
 #ifndef _WIN32
     int wstatus = s->wstatus;
-    if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) != s->expected_status) {
-        fprintf(stderr, "%s:%d: kill_qemu() tried to terminate QEMU "
-                "process but encountered exit status %d (expected %d)\n",
-                __FILE__, __LINE__, WEXITSTATUS(wstatus), s->expected_status);
-        abort();
+    if (WIFEXITED(wstatus)) {
+        if (s->expected_signal) {
+            fprintf(stderr, "%s:%d: encountered exit status %d but expected signal %d\n",
+                    __FILE__, __LINE__, WEXITSTATUS(wstatus), s->expected_signal);
+            abort();
+        } else if (WEXITSTATUS(wstatus) != s->expected_status) {
+            fprintf(stderr, "%s:%d: kill_qemu() tried to terminate QEMU "
+                    "process but encountered exit status %d (expected %d)\n",
+                    __FILE__, __LINE__, WEXITSTATUS(wstatus), s->expected_status);
+            abort();
+        }
     } else if (WIFSIGNALED(wstatus)) {
         int sig = WTERMSIG(wstatus);
         const char *signame = strsignal(sig) ?: "unknown ???";
         const char *dump = WCOREDUMP(wstatus) ? " (core dumped)" : "";
 
-        fprintf(stderr, "%s:%d: kill_qemu() detected QEMU death "
-                "from signal %d (%s)%s\n",
-                __FILE__, __LINE__, sig, signame, dump);
-        abort();
+        if (sig != s->expected_signal) {
+            fprintf(stderr, "%s:%d: kill_qemu() detected QEMU death "
+                    "from signal %d (%s)%s\n",
+                    __FILE__, __LINE__, sig, signame, dump);
+            abort();
+        }
     }
 #else
     if (s->exit_code != s->expected_status) {
