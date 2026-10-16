@@ -6,11 +6,12 @@
   script:
     - !reference [.base_meson_ccache_job_template, script]
     - du -sh .git
+    - meson subprojects download
     - mkdir build
     - cd build
     - section_start configure "Running configure"
     - ../configure --enable-werror --disable-docs --enable-fdt=system
-          --disable-debug-info
+          --disable-debug-info --disable-download
           ${TARGETS:+--target-list="$TARGETS"}
           $CONFIGURE_ARGS ||
       { cat config.log meson-logs/meson-log.txt && exit 1; }
