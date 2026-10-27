@@ -32,19 +32,38 @@ if have_system or xkbcommon.found()
   endforeach
 endif
 
+libui_keymap_sources = files(
+    'input-keymap.c',
+    'input-keymap-atset1-to-linux.c',
+    'input-keymap-linux-to-atset1.c',
+    'input-keymap-linux-to-atset2.c',
+    'input-keymap-linux-to-atset3.c',
+    'input-keymap-linux-to-qcode.c',
+    'input-keymap-linux-to-qnum.c',
+    'input-keymap-linux-to-sun.c',
+    'input-keymap-osx-to-linux.c',
+    'input-keymap-qcode-to-linux.c',
+    'input-keymap-qnum-to-linux.c',
+    'input-keymap-usb-to-linux.c',
+    'input-keymap-win32-to-linux.c',
+    'input-keymap-x11-to-linux.c',
+    'input-keymap-xorgkbd-to-linux.c',
+    'input-keymap-xorgxquartz-to-linux.c',
+    'input-keymap-xorgxwin-to-linux.c',
+)
+
 libui_sources = files(
     'clipboard.c',
     'console.c',
     'cursor.c',
     'dmabuf.c',
     'display-surface.c',
-    'input-keymap.c',
     'kbd-state.c',
     'keymaps.c',
     'qemu-pixman.c',
     'spice-module.c',
     'vgafont.c',
-  )
+  ) + libui_keymap_sources
 if pixman.found()
   libui_sources += files('cp437.c', 'vt100.c')
 endif

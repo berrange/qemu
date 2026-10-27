@@ -4,23 +4,6 @@
 
 #include "standard-headers/linux/input.h"
 
-#include "ui/input-keymap-atset1-to-linux.c.inc"
-#include "ui/input-keymap-linux-to-qcode.c.inc"
-#include "ui/input-keymap-linux-to-atset1.c.inc"
-#include "ui/input-keymap-linux-to-atset2.c.inc"
-#include "ui/input-keymap-linux-to-atset3.c.inc"
-#include "ui/input-keymap-qcode-to-linux.c.inc"
-#include "ui/input-keymap-linux-to-qnum.c.inc"
-#include "ui/input-keymap-linux-to-sun.c.inc"
-#include "ui/input-keymap-qnum-to-linux.c.inc"
-#include "ui/input-keymap-usb-to-linux.c.inc"
-#include "ui/input-keymap-win32-to-linux.c.inc"
-#include "ui/input-keymap-x11-to-linux.c.inc"
-#include "ui/input-keymap-xorgkbd-to-linux.c.inc"
-#include "ui/input-keymap-xorgxquartz-to-linux.c.inc"
-#include "ui/input-keymap-xorgxwin-to-linux.c.inc"
-#include "ui/input-keymap-osx-to-linux.c.inc"
-
 int qemu_input_linux_to_qcode(unsigned int lnx)
 {
     if (lnx >= qemu_input_map_linux_to_qcode_len) {
