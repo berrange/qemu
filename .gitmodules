@@ -48,3 +48,6 @@
 [submodule "roms/hexagon-hypervisor"]
 	path = roms/hexagon-hypervisor
 	url = https://gitlab.com/qemu-project/hexagon-hypervisor.git
+[submodule "tests/virtio-villain"]
+	path = tests/virtio-villain
+	url = https://github.com/weltling/virtio-villain.git

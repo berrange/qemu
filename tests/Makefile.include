@@ -16,6 +16,7 @@ check-help:
 	@echo " $(MAKE) check-tracetool               Run tracetool generator tests"
 	@echo " $(MAKE) check-block                   Run block tests (all formats/protocols)"
 	@echo " $(MAKE) check-block-DRIVER            Run block tests (only for format/protocol 'DRIVER')"
+	@echo " $(MAKE) check-virtio-villain          Run the standalone virtio fault injection suite"
 ifneq ($(filter $(all-check-targets), check-softfloat),)
 	@echo " $(MAKE) check-softfloat               Run FPU emulation tests"
 	@echo " $(MAKE) check-tcg                     Run TCG tests"
@@ -64,6 +65,8 @@ check-build: run-ninja
 
 check-clean:
 	rm -rf $(BUILD_DIR)/tests/functional
+	rm -rf $(BUILD_DIR)/tests/virtio-villain-build
+	rm -f $(BUILD_DIR)/tests/virtio-villain-initramfs.stamp
 
 clean: check-clean
 

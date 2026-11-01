@@ -4700,6 +4700,13 @@ F: tests/functional/generic/test_linters.py
 F: tests/functional/pylintrc
 F: tests/functional/qemu_test/
 
+virtio-villain fault injection test
+M: Anatol Belski <anbelski@linux.microsoft.com>
+S: Maintained
+F: tests/virtio-villain
+F: tests/virtio-villain-*.py
+F: docs/devel/testing/virtio-villain.rst
+
 Windows Hosted Continuous Integration
 M: Yonggang Luo <luoyonggang@gmail.com>
 S: Maintained
