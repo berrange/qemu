@@ -1,6 +1,60 @@
 subdir('bench')
 subdir('qemu-iotests')
 
+if host_os == 'linux' and not meson.is_cross_build() and \
+   cpu in ['x86_64', 'aarch64'] and \
+   emulators.has_key('qemu-system-' + cpu)
+
+  villain_make = find_program('make', required: false)
+  villain_strip = find_program('strip', required: false)
+  villain_cpio = find_program('cpio', required: false)
+  villain_gzip = find_program('gzip', required: false)
+
+  if villain_make.found() and villain_strip.found() and \
+     villain_cpio.found() and villain_gzip.found()
+    villain_list = files('virtio-villain-list.py')
+    villain_list_args = get_option('wrap_mode') == 'nodownload' ? \
+                        ['--no-download'] : []
+
+    villain_names = run_command(
+      python, villain_list, villain_list_args, check: true
+    ).stdout().strip().split()
+    villain_sources = run_command(
+      python, villain_list, villain_list_args, '--sources', check: true
+    ).stdout().strip().split('\n')
+
+    villain_cc = meson.get_compiler('c', native: true).cmd_array()
+    villain_build_dir = meson.current_build_dir() / 'virtio-villain-build'
+
+    villain_initramfs = custom_target(
+      'virtio-villain-initramfs',
+      output: 'virtio-villain-initramfs.stamp',
+      command: [python, files('virtio-villain-build.py'),
+                '--source', meson.current_source_dir() / 'virtio-villain',
+                '--build', villain_build_dir, '--arch', cpu,
+                '--stamp', '@OUTPUT@', '--make', villain_make.full_path(),
+                '--'] + villain_cc,
+      depend_files: files(villain_sources
+                          + ['functional/qemu_test/asset.py']),
+      build_by_default: false)
+
+    foreach name : villain_names
+      test(name, python,
+           args: [files('virtio-villain-test.py'),
+                  '--build', villain_build_dir,
+                  '--source', meson.current_source_dir() / 'virtio-villain',
+                  '--qemu', emulators['qemu-system-' + cpu].full_path(),
+                  name.split('-')[0]],
+           depends: [villain_initramfs, emulators['qemu-system-' + cpu]],
+           suite: ['virtio-villain-optional'], timeout: 90)
+    endforeach
+
+  else
+    message('virtio-villain requires make, strip, cpio and gzip')
+  endif
+endif
+
+
 test_qapi_outputs = [
   'qapi-builtin-types.c',
   'qapi-builtin-types.h',

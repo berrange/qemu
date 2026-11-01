@@ -10,6 +10,7 @@ testing infrastructure.
    main
    qtest
    functional
+   virtio-villain
    acpi-bits
    ci
    fuzzing

@@ -148,6 +148,19 @@ functional-system-fedora:
     IMAGE: fedora
     MAKE_CHECK_ARGS: check-functional
 
+virtio-villain:
+  extends: .native_test_job_template
+  needs:
+    - job: build-system-fedora
+      artifacts: true
+  variables:
+    IMAGE: fedora
+    QEMU_TEST_VIRTIO_VILLAIN_ACCEL: tcg
+  script:
+    - cd build
+    - make -j"$JOBS" check-virtio-villain
+  allow_failure: true
+
 crash-test-fedora:
   extends: .native_test_job_template
   needs:
